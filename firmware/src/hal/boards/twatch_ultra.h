@@ -10,7 +10,7 @@
 #define TWATCH_SPI_MISO  33
 #define TWATCH_SPI_SCK   35
 
-// CO5300 AMOLED display (502x410 portrait), QSPI dedicated bus
+// CO5300 AMOLED panel (502x410 native), worn portrait → 410W x 502H, QSPI bus
 #define TWATCH_DISP_CS   41
 #define TWATCH_DISP_SCK  40
 #define TWATCH_DISP_D0   38
@@ -19,8 +19,8 @@
 #define TWATCH_DISP_D3   45
 #define TWATCH_DISP_RST  37
 #define TWATCH_DISP_TE    6
-#define TWATCH_DISP_W   502
-#define TWATCH_DISP_H   410
+#define TWATCH_DISP_W   410
+#define TWATCH_DISP_H   502
 
 // SD card (shares SPI bus with LoRa)
 #define TWATCH_SD_CS     21
