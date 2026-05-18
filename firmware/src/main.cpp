@@ -8,9 +8,7 @@
 #include "hal/Speaker.h"
 #include "storage/SDCard.h"
 #include "config/ConfigManager.h"
-#include "input/Keyboard.h"
-#include "input/Trackball.h"
-#include "input/Touch.h"
+#include "hal/IInput.h"
 #include "mesh/MeshManager.h"
 #include "mesh/ContactStore.h"
 #include "mesh/ChannelStore.h"
@@ -82,14 +80,7 @@ void setup() {
     }
 
     // 5. Input devices
-    Display::instance().setBootStatus("Keyboard...");
-    Keyboard::instance().init();
-
-    Display::instance().setBootStatus("Trackball...");
-    Trackball::instance().init();
-
-    Display::instance().setBootStatus("Touchscreen...");
-    Touch::instance().init();
+    IInput::instance().init();
 
     // 6. GPS
     if (cfg.gpsEnabled) {
@@ -183,7 +174,7 @@ void loop() {
     Speaker::instance().update();
 
     handleKeyShortcuts();
-    Trackball::instance().updatePress();
+    IInput::instance().updatePress();
     UIManager::instance().updateKeyLockToggle();
     UIManager::instance().updateSOSHold();
     UIManager::instance().checkBatteryAlert();
@@ -255,32 +246,33 @@ static void setupMeshCallbacks() {
 }
 
 static void handleKeyShortcuts() {
-    auto& kb = Keyboard::instance();
+    if (!IInput::instance().has(InputCapability::Keyboard)) return;
+
     auto& ui = UIManager::instance();
-    char key = kb.lastKey();
+    char key = IInput::instance().pollKey();
     if (key == 0) return;
 
     // Don't process shortcuts while PIN locked — keys go to PIN overlay via LVGL
     if (ui.isLocked()) {
-        kb.clearKey();
+        IInput::instance().clearKey();
         return;
     }
 
     // Don't process shortcuts while key-locked
     if (ui.isKeyLocked()) {
-        kb.clearKey();
+        IInput::instance().clearKey();
         return;
     }
 
     if (key == 0x1B && ui.currentScreen() != Screen::CONVO_LIST) {
         ui.goHome();
-        kb.clearKey();
+        IInput::instance().clearKey();
         return;
     }
     if (key == '0' && ui.currentScreen() == Screen::CONVO_LIST &&
         ConfigManager::instance().config().security.adminEnabled) {
         ui.showScreen(Screen::ADMIN);
-        kb.clearKey();
+        IInput::instance().clearKey();
         return;
     }
     if (ui.currentScreen() == Screen::CONVO_LIST && key >= '1' && key <= '9') {
@@ -289,13 +281,13 @@ static void handleKeyShortcuts() {
         if (idx < convos.size()) {
             ui.openChat(convos[idx]->convoId);
         }
-        kb.clearKey();
+        IInput::instance().clearKey();
         return;
     }
     if (key == 0x0C && ui.currentScreen() == Screen::CHAT) {
         ui.insertLocation();
-        kb.clearKey();
+        IInput::instance().clearKey();
         return;
     }
-    kb.clearKey();
+    IInput::instance().clearKey();
 }

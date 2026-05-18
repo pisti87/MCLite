@@ -7,9 +7,7 @@
 #include "../hal/GPS.h"
 #include "../config/ConfigManager.h"
 #include "../config/defaults.h"
-#include "../input/Keyboard.h"
-#include "../input/Trackball.h"
-#include "../input/Touch.h"
+#include "../hal/IInput.h"
 #include "../hal/Speaker.h"
 #include "../hal/Battery.h"
 #include "../i18n/I18n.h"
@@ -35,12 +33,7 @@ bool UIManager::init() {
     // Create LVGL input group and bind input devices
     _inputGroup = lv_group_create();
     lv_group_set_default(_inputGroup);
-    if (Keyboard::instance().indev()) {
-        lv_indev_set_group(Keyboard::instance().indev(), _inputGroup);
-    }
-    if (Trackball::instance().indev()) {
-        lv_indev_set_group(Trackball::instance().indev(), _inputGroup);
-    }
+    IInput::instance().attachToGroup(_inputGroup);
 
     // Create all UI components
     _statusBar.create(_mainScreen);
@@ -75,7 +68,7 @@ bool UIManager::init() {
     // Turn on keyboard backlight if enabled
     const auto& initCfg = ConfigManager::instance().config();
     if (initCfg.display.kbdBacklight) {
-        Keyboard::instance().setBacklight(initCfg.display.kbdBrightness);
+        IInput::instance().setBacklight(initCfg.display.kbdBrightness);
     }
 
     // Do NOT show any screen yet — loadMainScreen() will do that after boot
@@ -106,7 +99,7 @@ void UIManager::update() {
         if (nowDim - _lastActivity > dimTimeout && !_dimmed) {
             Display::instance().setBrightness(cfg.display.dimBrightness);
             if (cfg.display.kbdBacklight) {
-                Keyboard::instance().setBacklight(0);
+                IInput::instance().setBacklight(0);
             }
             _dimmed = true;
             // Auto-lock on dim — fallback chain: pin → key → none
@@ -170,18 +163,15 @@ void UIManager::update() {
 void UIManager::checkWake() {
     bool activity = false;
 
-    // Keyboard: any key pressed
-    if (Keyboard::instance().lastKey() != 0) {
+    if (IInput::instance().pollKey() != 0) {
         activity = true;
     }
 
-    // Trackball: pressed or moved
-    if (Trackball::instance().isPressed() || Trackball::instance().hasMoved()) {
+    if (IInput::instance().isPressed() || IInput::instance().hasMoved()) {
         activity = true;
     }
 
-    // Touch: screen touched
-    if (Touch::instance().isTouched()) {
+    if (IInput::instance().isTouched()) {
         activity = true;
     }
 
@@ -195,12 +185,12 @@ void UIManager::checkWake() {
         const auto& dispCfg = ConfigManager::instance().config().display;
         Display::instance().setBrightness(dispCfg.brightness);
         if (dispCfg.kbdBacklight) {
-            Keyboard::instance().setBacklight(dispCfg.kbdBrightness);
+            IInput::instance().setBacklight(dispCfg.kbdBrightness);
         }
         _dimmed = false;
         // Consume the keyboard wake key so it doesn't pass through
-        if (!_isLocked && Keyboard::instance().lastKey() != 0) {
-            Keyboard::instance().clearKey();
+        if (!_isLocked && IInput::instance().pollKey() != 0) {
+            IInput::instance().clearKey();
         }
     }
 }
@@ -243,7 +233,7 @@ void UIManager::showScreen(Screen screen) {
         const auto& dispCfg = ConfigManager::instance().config().display;
         Display::instance().setBrightness(dispCfg.brightness);
         if (dispCfg.kbdBacklight) {
-            Keyboard::instance().setBacklight(dispCfg.kbdBrightness);
+            IInput::instance().setBacklight(dispCfg.kbdBrightness);
         }
         _dimmed = false;
     }
@@ -319,7 +309,7 @@ void UIManager::onIncomingMessage(const ConvoId& id, const Message& msg) {
         const auto& dispCfg = ConfigManager::instance().config().display;
         Display::instance().setBrightness(dispCfg.brightness);
         if (dispCfg.kbdBacklight) {
-            Keyboard::instance().setBacklight(dispCfg.kbdBrightness);
+            IInput::instance().setBacklight(dispCfg.kbdBrightness);
         }
         _dimmed = false;
     }
@@ -438,7 +428,7 @@ void UIManager::showSOSAlert(const ConvoId& id, const Message& msg) {
     // Wake display to max brightness
     Display::instance().setBrightness(255);
     if (cfg.display.kbdBacklight) {
-        Keyboard::instance().setBacklight(cfg.display.kbdBrightness);
+        IInput::instance().setBacklight(cfg.display.kbdBrightness);
     }
     _dimmed = false;
     _lastActivity = millis();
@@ -505,7 +495,7 @@ void UIManager::dismissSOSAlert(bool sendReply) {
     const auto& dispCfgSos = ConfigManager::instance().config().display;
     Display::instance().setBrightness(dispCfgSos.brightness);
     if (dispCfgSos.kbdBacklight) {
-        Keyboard::instance().setBacklight(dispCfgSos.kbdBrightness);
+        IInput::instance().setBacklight(dispCfgSos.kbdBrightness);
     }
 
     Serial.println("[UI] SOS alert dismissed");
@@ -853,10 +843,10 @@ void UIManager::insertLocation() {
 void UIManager::updateSOSHold() {
     if (_keyLocked) return;  // No SOS trigger while key-locked
 
-    auto& tb = Trackball::instance();
-    uint32_t held = tb.holdDurationMs();
+    bool pressed = IInput::instance().isPressed();
+    uint32_t held = IInput::instance().holdDurationMs();
 
-    if (!tb.isPressed() || held < SOS_HOLD_SHOW_MS) {
+    if (!pressed || held < SOS_HOLD_SHOW_MS) {
         // Not held long enough or released — cancel countdown
         if (_sosCountdownActive) {
             if (_sosCountdownLabel) {
@@ -865,7 +855,7 @@ void UIManager::updateSOSHold() {
             }
             _sosCountdownActive = false;
         }
-        if (!tb.isPressed()) {
+        if (!pressed) {
             _sosSentThisHold = false;
         }
         return;
@@ -1198,10 +1188,7 @@ void UIManager::showPinLock() {
     lv_obj_add_flag(_pinOverlay, LV_OBJ_FLAG_CLICKABLE);
     lv_group_add_obj(_pinGroup, _pinOverlay);
     lv_group_focus_obj(_pinOverlay);
-    if (Keyboard::instance().indev())
-        lv_indev_set_group(Keyboard::instance().indev(), _pinGroup);
-    if (Trackball::instance().indev())
-        lv_indev_set_group(Trackball::instance().indev(), _pinGroup);
+    IInput::instance().attachToGroup(_pinGroup);
     lv_obj_add_event_cb(_pinOverlay, pinKeyCb, LV_EVENT_KEY, this);
 
     Serial.println("[UI] PIN lock shown");
@@ -1219,7 +1206,7 @@ void UIManager::onPinKey(uint32_t key) {
         const auto& dispCfg = ConfigManager::instance().config().display;
         Display::instance().setBrightness(dispCfg.brightness);
         if (dispCfg.kbdBacklight) {
-            Keyboard::instance().setBacklight(dispCfg.kbdBrightness);
+            IInput::instance().setBacklight(dispCfg.kbdBrightness);
         }
         _dimmed = false;
     }
@@ -1272,10 +1259,7 @@ void UIManager::dismissPinLock() {
 
     // Restore input group for keyboard/trackball before deleting PIN group
     if (_inputGroup) {
-        if (Keyboard::instance().indev())
-            lv_indev_set_group(Keyboard::instance().indev(), _inputGroup);
-        if (Trackball::instance().indev())
-            lv_indev_set_group(Trackball::instance().indev(), _inputGroup);
+        IInput::instance().attachToGroup(_inputGroup);
     }
 
     if (_pinOverlay) {
@@ -1295,7 +1279,7 @@ void UIManager::dismissPinLock() {
         const auto& dispCfg = ConfigManager::instance().config().display;
         Display::instance().setBrightness(dispCfg.brightness);
         if (dispCfg.kbdBacklight) {
-            Keyboard::instance().setBacklight(dispCfg.kbdBrightness);
+            IInput::instance().setBacklight(dispCfg.kbdBrightness);
         }
         _dimmed = false;
     }
@@ -1620,18 +1604,12 @@ void UIManager::switchToModalGroup(lv_obj_t* modalWidget) {
     // Enable editing mode so encoder (trackball) navigates between buttons
     // inside the btnmatrix rather than cycling group objects
     lv_group_set_editing(_modalGroup, true);
-    if (Keyboard::instance().indev())
-        lv_indev_set_group(Keyboard::instance().indev(), _modalGroup);
-    if (Trackball::instance().indev())
-        lv_indev_set_group(Trackball::instance().indev(), _modalGroup);
+    IInput::instance().attachToGroup(_modalGroup);
 }
 
 void UIManager::restoreFromModalGroup() {
     if (_inputGroup) {
-        if (Keyboard::instance().indev())
-            lv_indev_set_group(Keyboard::instance().indev(), _inputGroup);
-        if (Trackball::instance().indev())
-            lv_indev_set_group(Trackball::instance().indev(), _inputGroup);
+        IInput::instance().attachToGroup(_inputGroup);
     }
     if (_modalGroup) {
         lv_group_del(_modalGroup);
@@ -1711,15 +1689,12 @@ void UIManager::updateKeyLockToggle() {
     if (sec.lockMode == "none") return;
     if (_isLocked) return;  // PIN lock already showing
 
-    auto& tb = Trackball::instance();
-    bool pressed = tb.isPressed();
-
-    if (!pressed) {
+    if (!IInput::instance().isPressed()) {
         _keyLockActioned = false;  // Reset for next hold
         return;
     }
 
-    uint32_t held = tb.holdDurationMs();
+    uint32_t held = IInput::instance().holdDurationMs();
 
     // Already acted this hold — check if we need to cancel a key lock (held into SOS)
     if (_keyLockActioned) {
