@@ -18,9 +18,11 @@
 #define LV_MEM_CUSTOM_FREE    free
 #define LV_MEM_CUSTOM_REALLOC realloc
 
-/* Display */
-#define LV_HOR_RES_MAX 320
-#define LV_VER_RES_MAX 240
+/* Display — sized to the larger of supported boards (T-Watch Ultra 410x502).
+   T-Deck Plus (320x240) uses less than the cap; the unused PSRAM is wasted
+   but the cost is ~14 KB out of 8 MB. */
+#define LV_HOR_RES_MAX 410
+#define LV_VER_RES_MAX 502
 #define LV_DPI_DEF 130
 
 /* Tick */

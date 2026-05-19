@@ -69,8 +69,12 @@
 #define TWATCH_DRV2605_ADDR  0x5A
 #define TWATCH_XL9555_ADDR   0x20
 
-// XL9555 I/O expander virtual GPIOs (controls power-on sequencing)
-#define TWATCH_EXP_DRV_EN     0    // haptic enable
+// XL9555 I/O expander virtual GPIOs (controls power-on sequencing + RF switch)
+// Pin numbers verified against LilyGoLib's LilyGoWatchUltra.cpp and the
+// T-Watch Ultra V1.0 schematic. Panel reset is driven via TWATCH_DISP_RST
+// (GPIO 37) by LovyanGFX Panel_CO5300 directly — not via the expander.
+#define TWATCH_EXP_DRV_EN     6    // haptic enable (DRV2605)
 #define TWATCH_EXP_DISP_EN    7    // display power
-#define TWATCH_EXP_TOUCH_RST  8    // touch controller reset
-#define TWATCH_EXP_SD_DET    10    // SD card detect
+#define TWATCH_EXP_TOUCH_RST 10    // touch controller reset (CST9217)
+#define TWATCH_EXP_LORA_RF_SW 11   // LoRa antenna switch — HIGH for TX/RX
+#define TWATCH_EXP_SD_DET    12    // SD card detect (input)
