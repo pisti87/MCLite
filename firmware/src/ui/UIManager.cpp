@@ -1486,7 +1486,12 @@ void UIManager::openMapAsync(void* user) {
 }
 
 void UIManager::showMapScreen(double lat, double lon, const String& contactName) {
+#ifdef PLATFORM_TDECK
     _mapScreen.open(lat, lon, contactName);
+#else
+    // T-Watch MapScreen not yet implemented (portrait-touch rewrite pending).
+    (void)lat; (void)lon; (void)contactName;
+#endif
 }
 
 bool UIManager::evalCanMap(const uint8_t* pubKey) const {
