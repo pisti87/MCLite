@@ -2,6 +2,8 @@
 
 #include <lvgl.h>
 
+#include "../hal/boards/board.h"
+
 // Icon aliases — simple text characters that always render correctly
 #define ICON_DM       "@"                  // DM contact
 #define ICON_CHANNEL  "#"                  // Public channel
@@ -40,12 +42,24 @@ constexpr int PAD_SMALL   = 4;
 constexpr int PAD_MEDIUM  = 8;
 constexpr int PAD_LARGE   = 12;
 
+// Safe-area insets for displays with rounded bezel corners. 0 on T-Deck (rect
+// LCD); will diverge for T-Watch in a follow-up sub-step.
+constexpr int SAFE_AREA_TOP    = 0;
+constexpr int SAFE_AREA_BOTTOM = 0;
+constexpr int SAFE_AREA_LEFT   = 0;
+constexpr int SAFE_AREA_RIGHT  = 0;
+
 // Status bar
 constexpr int STATUS_BAR_HEIGHT = 24;
 
+// Chat header / input bar heights. Will diverge for T-Watch (touch finger
+// targets are larger than trackball clicks).
+constexpr int CHAT_HEADER_HEIGHT = 28;
+constexpr int CHAT_INPUT_HEIGHT  = 36;
+
 // Chat bubbles
 constexpr int BUBBLE_RADIUS     = 8;
-constexpr int BUBBLE_MAX_WIDTH  = 240;  // ~75% of screen width
+constexpr int BUBBLE_MAX_WIDTH  = BOARD_DISP_W * 3 / 4;  // ~75% of screen width
 constexpr int BUBBLE_PAD        = 6;
 
 // Conversation list

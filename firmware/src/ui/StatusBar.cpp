@@ -12,7 +12,7 @@ namespace mclite {
 void StatusBar::create(lv_obj_t* parent) {
     _bar = lv_obj_create(parent);
     lv_obj_set_size(_bar, Display::width(), theme::STATUS_BAR_HEIGHT);
-    lv_obj_align(_bar, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_align(_bar, LV_ALIGN_TOP_MID, 0, theme::SAFE_AREA_TOP);
     lv_obj_set_style_bg_color(_bar, theme::BG_STATUS_BAR, 0);
     lv_obj_set_style_bg_opa(_bar, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_bar, 0, 0);

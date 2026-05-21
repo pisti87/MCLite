@@ -127,7 +127,9 @@ void MapScreen::buildWidgets() {
     // Close button (top-left).
     _closeBtn = lv_btn_create(_screen);
     styleBtn(_closeBtn);
-    lv_obj_align(_closeBtn, LV_ALIGN_TOP_LEFT, 4, 4);
+    lv_obj_align(_closeBtn, LV_ALIGN_TOP_LEFT,
+                 theme::SAFE_AREA_LEFT + theme::PAD_SMALL,
+                 theme::SAFE_AREA_TOP  + theme::PAD_SMALL);
     lv_obj_t* closeLbl = lv_label_create(_closeBtn);
     lv_label_set_text(closeLbl, LV_SYMBOL_CLOSE);
     lv_obj_center(closeLbl);
@@ -136,7 +138,9 @@ void MapScreen::buildWidgets() {
     // Zoom-in button (top-right).
     _zoomInBtn = lv_btn_create(_screen);
     styleBtn(_zoomInBtn);
-    lv_obj_align(_zoomInBtn, LV_ALIGN_TOP_RIGHT, -4, 4);
+    lv_obj_align(_zoomInBtn, LV_ALIGN_TOP_RIGHT,
+                 -(theme::SAFE_AREA_RIGHT + theme::PAD_SMALL),
+                 theme::SAFE_AREA_TOP + theme::PAD_SMALL);
     lv_obj_t* inLbl = lv_label_create(_zoomInBtn);
     lv_label_set_text(inLbl, LV_SYMBOL_PLUS);
     lv_obj_center(inLbl);
@@ -145,7 +149,9 @@ void MapScreen::buildWidgets() {
     // Zoom-out button (below +).
     _zoomOutBtn = lv_btn_create(_screen);
     styleBtn(_zoomOutBtn);
-    lv_obj_align(_zoomOutBtn, LV_ALIGN_TOP_RIGHT, -4, 36);
+    lv_obj_align(_zoomOutBtn, LV_ALIGN_TOP_RIGHT,
+                 -(theme::SAFE_AREA_RIGHT + theme::PAD_SMALL),
+                 theme::SAFE_AREA_TOP + 36);
     lv_obj_t* outLbl = lv_label_create(_zoomOutBtn);
     lv_label_set_text(outLbl, LV_SYMBOL_MINUS);
     lv_obj_center(outLbl);
