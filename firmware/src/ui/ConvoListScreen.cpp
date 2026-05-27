@@ -274,7 +274,7 @@ void ConvoListScreen::addConvoRow(Conversation* convo) {
         lv_obj_t* preview = lv_label_create(row);
         lv_obj_set_style_text_font(preview, FONT_SMALL, 0);
         lv_obj_set_style_text_color(preview, theme::TEXT_SECONDARY, 0);
-        lv_obj_set_width(preview, 300);
+        lv_obj_set_width(preview, theme::CONTENT_WIDTH - 20);
         lv_label_set_long_mode(preview, LV_LABEL_LONG_DOT);
 
         String previewText = last->text;

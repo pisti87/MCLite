@@ -50,7 +50,7 @@ void ChatScreen::createHeader() {
 
     // Back button
     lv_obj_t* backBtn = lv_btn_create(_header);
-    lv_obj_set_size(backBtn, 30, 20);
+    lv_obj_set_size(backBtn, theme::BTN_HEADER_BACK_W, theme::BTN_HEADER_BACK_H);
     lv_obj_set_style_bg_opa(backBtn, LV_OPA_TRANSP, 0);
     lv_obj_set_style_shadow_width(backBtn, 0, 0);
     lv_obj_set_style_border_width(backBtn, 0, 0);
@@ -64,7 +64,7 @@ void ChatScreen::createHeader() {
     // Contact/channel name — wrapped in a transparent button for tap detection
     // Touch-only: do NOT add to encoder group (breaks trackball navigation)
     lv_obj_t* nameBtn = lv_btn_create(_header);
-    lv_obj_set_height(nameBtn, 20);
+    lv_obj_set_height(nameBtn, theme::CHAT_NAME_BTN_H);
     lv_obj_set_style_bg_opa(nameBtn, LV_OPA_TRANSP, 0);
     lv_obj_set_style_shadow_width(nameBtn, 0, 0);
     lv_obj_set_style_border_width(nameBtn, 0, 0);
@@ -113,7 +113,7 @@ void ChatScreen::createInputBar() {
     // Canned messages button (only if enabled)
     if (ConfigManager::instance().config().messaging.cannedMessages) {
         _cannedBtn = lv_btn_create(_inputBar);
-        lv_obj_set_size(_cannedBtn, 28, 28);
+        lv_obj_set_size(_cannedBtn, theme::BTN_ACTION_W, theme::BTN_ACTION_H);
         lv_obj_set_style_bg_opa(_cannedBtn, LV_OPA_TRANSP, 0);
         lv_obj_set_style_shadow_width(_cannedBtn, 0, 0);
         lv_obj_set_style_border_width(_cannedBtn, 0, 0);
@@ -129,7 +129,7 @@ void ChatScreen::createInputBar() {
     // Text input
     _textarea = lv_textarea_create(_inputBar);
     lv_obj_set_flex_grow(_textarea, 1);
-    lv_obj_set_height(_textarea, 28);
+    lv_obj_set_height(_textarea, theme::CHAT_TEXTAREA_H);
     lv_textarea_set_one_line(_textarea, true);
     lv_textarea_set_max_length(_textarea, 160);  // MeshCore MAX_TEXT_LEN
     lv_textarea_set_placeholder_text(_textarea, t("chat_placeholder"));
@@ -142,7 +142,7 @@ void ChatScreen::createInputBar() {
 
     // GPS location button
     _gpsBtn = lv_btn_create(_inputBar);
-    lv_obj_set_size(_gpsBtn, 28, 28);
+    lv_obj_set_size(_gpsBtn, theme::BTN_ACTION_W, theme::BTN_ACTION_H);
     lv_obj_set_style_bg_opa(_gpsBtn, LV_OPA_TRANSP, 0);
     lv_obj_set_style_shadow_width(_gpsBtn, 0, 0);
     lv_obj_set_style_border_width(_gpsBtn, 0, 0);
@@ -156,7 +156,7 @@ void ChatScreen::createInputBar() {
 
     // Send button
     _sendBtn = lv_btn_create(_inputBar);
-    lv_obj_set_size(_sendBtn, 50, 28);
+    lv_obj_set_size(_sendBtn, theme::BTN_SEND_W, theme::BTN_SEND_H);
     lv_obj_set_style_bg_color(_sendBtn, theme::ACCENT, 0);
     lv_obj_set_style_radius(_sendBtn, 4, 0);
     lv_obj_add_event_cb(_sendBtn, sendBtnCb, LV_EVENT_CLICKED, this);
@@ -588,7 +588,7 @@ void ChatScreen::showCannedPicker() {
     lv_coord_t pickerH = count * 24 + 8;  // 24px per button + padding
     lv_coord_t maxH = Display::height() - theme::STATUS_BAR_HEIGHT - 16;  // leave margin
     if (pickerH > maxH) pickerH = maxH;
-    lv_obj_set_size(_cannedBtnm, 280, pickerH);
+    lv_obj_set_size(_cannedBtnm, theme::MODAL_TEXT_WIDTH, pickerH);
     lv_obj_align(_cannedBtnm, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_font(_cannedBtnm, FONT_NORMAL, 0);
     lv_obj_set_style_text_color(_cannedBtnm, theme::TEXT_PRIMARY, 0);

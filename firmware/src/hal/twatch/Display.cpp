@@ -76,11 +76,10 @@ bool Display::init() {
 
     lv_init();
 
-    // Allocate single draw buffer in PSRAM. The CO5300 + QSPI doesn't tolerate
-    // LVGL's double-buffer flush overlap cleanly — buffers can be flushed mid-
-    // update on the panel, producing colored-bar flicker at the partial-flush
-    // boundaries. Single-buffer serialises the writes; slower but stable.
-    const size_t bufSize = Display::width() * 40;  // 40 rows at a time
+    // Single 40-row PSRAM draw buffer. Smallest flicker observed with this
+    // configuration; bigger chunks make boundary artifacts more visible.
+    // Phase 4d / 5 investigation continues for a real fix.
+    const size_t bufSize = Display::width() * 40;
     _buf1 = (lv_color_t*)ps_malloc(bufSize * sizeof(lv_color_t));
     _buf2 = nullptr;
     if (!_buf1) {

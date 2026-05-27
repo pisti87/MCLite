@@ -115,8 +115,8 @@ void MapScreen::buildWidgets() {
     lv_obj_set_pos(_canvas, 0, 0);
 
     auto styleBtn = [](lv_obj_t* b) {
-        lv_obj_set_size(b, 28, 28);
-        lv_obj_set_style_radius(b, 14, 0);
+        lv_obj_set_size(b, theme::BTN_ACTION_W, theme::BTN_ACTION_H);
+        lv_obj_set_style_radius(b, theme::BTN_ACTION_W / 2, 0);
         lv_obj_set_style_bg_color(b, theme::BG_SECONDARY, 0);
         lv_obj_set_style_bg_opa(b, LV_OPA_70, 0);
         lv_obj_set_style_border_width(b, 1, 0);

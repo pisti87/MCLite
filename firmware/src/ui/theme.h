@@ -96,6 +96,37 @@ constexpr int CHAT_HEADER_HEIGHT = 28;
 constexpr int CHAT_INPUT_HEIGHT  = 36;
 #endif
 
+// Button + textarea sizes. T-Deck values match the prior hardcoded numbers
+// so the binary stays bit-identical; T-Watch bumps everything for finger
+// touch within the now-taller header/input-bar slots.
+#ifdef PLATFORM_TWATCH
+constexpr int BTN_ACTION_W      = 48;  // chat input bar action buttons (canned, gps)
+constexpr int BTN_ACTION_H      = 48;
+constexpr int BTN_SEND_W        = 60;
+constexpr int BTN_SEND_H        = 48;
+constexpr int BTN_HEADER_BACK_W = 48;
+constexpr int BTN_HEADER_BACK_H = 40;
+constexpr int BTN_HEADER_ICON_W = 48;  // header icon buttons (HeardAdverts, Admin close)
+constexpr int BTN_HEADER_ICON_H = 40;
+constexpr int CHAT_NAME_BTN_H   = 40;
+constexpr int CHAT_TEXTAREA_H   = 48;
+#else
+constexpr int BTN_ACTION_W      = 28;
+constexpr int BTN_ACTION_H      = 28;
+constexpr int BTN_SEND_W        = 50;
+constexpr int BTN_SEND_H        = 28;
+constexpr int BTN_HEADER_BACK_W = 30;
+constexpr int BTN_HEADER_BACK_H = 20;
+constexpr int BTN_HEADER_ICON_W = 32;
+constexpr int BTN_HEADER_ICON_H = 24;
+constexpr int CHAT_NAME_BTN_H   = 20;
+constexpr int CHAT_TEXTAREA_H   = 28;
+#endif
+
+// Standard modal/text widths — derived from CONTENT_WIDTH so they fit
+// each board. T-Deck: 320 - 40 = 280 (matches prior 280 literal).
+constexpr int MODAL_TEXT_WIDTH = CONTENT_WIDTH - 40;
+
 // Chat bubbles
 constexpr int BUBBLE_RADIUS     = 8;
 constexpr int BUBBLE_MAX_WIDTH  = BOARD_DISP_W * 3 / 4;  // ~75% of screen width

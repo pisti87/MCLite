@@ -143,7 +143,7 @@ void HeardAdvertsScreen::create(lv_obj_t* parent) {
     auto makeIconBtn = [](lv_obj_t* parent, const char* sym,
                           lv_event_cb_t cb, void* user) {
         lv_obj_t* btn = lv_btn_create(parent);
-        lv_obj_set_size(btn, 32, 24);
+        lv_obj_set_size(btn, theme::BTN_HEADER_ICON_W, theme::BTN_HEADER_ICON_H);
         lv_obj_set_style_bg_color(btn, theme::BG_SECONDARY, 0);
         lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
         lv_obj_set_style_radius(btn, 4, 0);
@@ -507,7 +507,7 @@ void HeardAdvertsScreen::openDetail(int slotIdx) {
     _detailMsgbox = lv_msgbox_create(NULL, t("heard_adverts_title"),
                                      _detailText.c_str(), btns, false);
     lv_obj_center(_detailMsgbox);
-    lv_obj_set_width(_detailMsgbox, 280);
+    lv_obj_set_width(_detailMsgbox, theme::MODAL_TEXT_WIDTH);
     lv_obj_set_height(_detailMsgbox, LV_SIZE_CONTENT);
     lv_obj_set_style_max_height(_detailMsgbox, 216, 0);
     lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY, 0);
@@ -664,7 +664,7 @@ void HeardAdvertsScreen::showSimpleInfoModal(const char* msg) {
     _detailMsgbox = lv_msgbox_create(NULL, t("heard_adverts_title"),
                                      _detailText.c_str(), btns, false);
     lv_obj_center(_detailMsgbox);
-    lv_obj_set_width(_detailMsgbox, 280);
+    lv_obj_set_width(_detailMsgbox, theme::MODAL_TEXT_WIDTH);
     lv_obj_set_height(_detailMsgbox, LV_SIZE_CONTENT);
     lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY, 0);
     lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY, 0);
@@ -687,7 +687,7 @@ void HeardAdvertsScreen::showSavedConfirmation() {
     _detailMsgbox = lv_msgbox_create(NULL, t("heard_adverts_title"),
                                      _detailText.c_str(), btns, false);
     lv_obj_center(_detailMsgbox);
-    lv_obj_set_width(_detailMsgbox, 280);
+    lv_obj_set_width(_detailMsgbox, theme::MODAL_TEXT_WIDTH);
     lv_obj_set_height(_detailMsgbox, LV_SIZE_CONTENT);
     lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY, 0);
     lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY, 0);

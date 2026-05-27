@@ -51,7 +51,7 @@ void AdminScreen::create(lv_obj_t* parent) {
     lv_label_set_text(title, t("admin_title"));
 
     _closeBtn = lv_btn_create(header);
-    lv_obj_set_size(_closeBtn, 32, 24);
+    lv_obj_set_size(_closeBtn, theme::BTN_HEADER_ICON_W, theme::BTN_HEADER_ICON_H);
     lv_obj_set_style_bg_color(_closeBtn, theme::BG_SECONDARY, 0);
     lv_obj_set_style_bg_opa(_closeBtn, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(_closeBtn, 4, 0);
@@ -451,7 +451,7 @@ void AdminScreen::show() {
     lv_obj_t* licLabel = lv_label_create(licContainer);
     lv_obj_set_style_text_font(licLabel, FONT_SMALL, 0);
     lv_obj_set_style_text_color(licLabel, theme::TEXT_SECONDARY, 0);
-    lv_obj_set_width(licLabel, 296);
+    lv_obj_set_width(licLabel, theme::CONTENT_WIDTH - 24);
     lv_label_set_long_mode(licLabel, LV_LABEL_LONG_WRAP);
     lv_label_set_text_static(licLabel, licenseText);
 

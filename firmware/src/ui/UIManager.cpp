@@ -406,7 +406,7 @@ void UIManager::showSOSAlert(const ConvoId& id, const Message& msg) {
     _sosMsgbox = lv_msgbox_create(NULL, sosTitleStr.c_str(),
                                   _sosAlertText.c_str(), btns, false);
     lv_obj_center(_sosMsgbox);
-    lv_obj_set_width(_sosMsgbox, 280);
+    lv_obj_set_width(_sosMsgbox, theme::MODAL_TEXT_WIDTH);
 
     // Style: red border, high contrast
     lv_obj_set_style_border_color(_sosMsgbox, theme::BATTERY_LOW, 0);
@@ -803,7 +803,7 @@ void UIManager::showSetupScreen(SetupReason reason) {
     lv_obj_t* msg = lv_label_create(overlay);
     lv_obj_set_style_text_color(msg, theme::TEXT_SECONDARY, 0);
     lv_obj_set_style_text_align(msg, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(msg, 280);
+    lv_obj_set_width(msg, theme::MODAL_TEXT_WIDTH);
 
     switch (reason) {
         case NO_SD:
@@ -847,7 +847,19 @@ void UIManager::insertLocation() {
 }
 
 void UIManager::updateSOSHold() {
-    if (_keyLocked) return;  // No SOS trigger while key-locked
+    if (_keyLocked) {
+        // No SOS trigger while key-locked, but DO clean up any in-flight
+        // countdown label — otherwise it gets orphaned if the lock engages
+        // mid-hold (auto-dim) and the user never sees it disappear.
+        if (_sosCountdownActive) {
+            if (_sosCountdownLabel) {
+                lv_obj_del(_sosCountdownLabel);
+                _sosCountdownLabel = nullptr;
+            }
+            _sosCountdownActive = false;
+        }
+        return;
+    }
 
     bool pressed = IInput::instance().isPressed();
     uint32_t held = IInput::instance().holdDurationMs();
@@ -886,7 +898,9 @@ void UIManager::updateSOSHold() {
         return;
     }
 
-    // Show or update countdown label
+    // Show or update countdown label (original styling — T-Deck worked fine
+    // with this; T-Watch update-in-place issue is a panel/driver bug we'll
+    // tackle separately in 4d, not by restructuring this UI).
     if (!_sosCountdownActive) {
         _sosCountdownActive = true;
         _sosCountdownLabel = lv_label_create(lv_layer_top());
@@ -1029,11 +1043,13 @@ void UIManager::sendSOSToAll() {
     sentBtns[1] = "";
     String sentTitleStr = String(LV_SYMBOL_WARNING " ") + t("sos_sent_title");
     lv_obj_t* msgbox = lv_msgbox_create(NULL, sentTitleStr.c_str(), confirmBuf, sentBtns, false);
+    lv_obj_set_width(msgbox, theme::MODAL_TEXT_WIDTH);
     lv_obj_center(msgbox);
     lv_obj_set_style_border_color(msgbox, theme::BATTERY_LOW, 0);
     lv_obj_set_style_border_width(msgbox, 2, 0);
     lv_obj_set_style_bg_color(msgbox, theme::BG_SECONDARY, 0);
     lv_obj_set_style_text_color(msgbox, theme::TEXT_PRIMARY, 0);
+    lv_obj_move_foreground(msgbox);
 
     lv_obj_t* btnmatrix = lv_msgbox_get_btns(msgbox);
     if (btnmatrix && _inputGroup) {
@@ -1524,7 +1540,7 @@ void UIManager::buildTelemetryMsgbox(bool canMap) {
     String title = String(LV_SYMBOL_EYE_OPEN " ") + t("telem_title");
     _telemMsgbox = lv_msgbox_create(NULL, title.c_str(), _telemText.c_str(), _telemBtns, false);
     lv_obj_center(_telemMsgbox);
-    lv_obj_set_width(_telemMsgbox, 280);
+    lv_obj_set_width(_telemMsgbox, theme::MODAL_TEXT_WIDTH);
     lv_obj_set_height(_telemMsgbox, LV_SIZE_CONTENT);
     lv_obj_set_style_max_height(_telemMsgbox, 200, 0);
     lv_obj_set_style_bg_color(_telemMsgbox, theme::BG_SECONDARY, 0);
@@ -1659,31 +1675,54 @@ void UIManager::disengageKeyLock() {
 void UIManager::showKeyLockOverlay() {
     if (_keyLockOverlay) return;  // Already showing
 
+#ifdef PLATFORM_TWATCH
+    // T-Watch: full-screen modal backdrop catches all touches. On T-Watch
+    // touch is the primary input, so the lock must physically block it.
+    // The visible "Locked" card is centered inside.
     _keyLockOverlay = lv_obj_create(lv_layer_top());
-    lv_obj_set_size(_keyLockOverlay, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(_keyLockOverlay, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_bg_opa(_keyLockOverlay, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all(_keyLockOverlay, theme::PAD_LARGE, 0);
-    lv_obj_set_style_pad_row(_keyLockOverlay, theme::PAD_SMALL, 0);
-    lv_obj_set_style_radius(_keyLockOverlay, 8, 0);
-    lv_obj_set_style_border_width(_keyLockOverlay, 2, 0);
-    lv_obj_set_style_border_color(_keyLockOverlay, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_size(_keyLockOverlay, Display::width(), Display::height());
+    lv_obj_set_pos(_keyLockOverlay, 0, 0);
+    lv_obj_set_style_bg_color(_keyLockOverlay, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(_keyLockOverlay, LV_OPA_70, 0);
+    lv_obj_set_style_border_width(_keyLockOverlay, 0, 0);
+    lv_obj_set_style_radius(_keyLockOverlay, 0, 0);
+    lv_obj_set_style_pad_all(_keyLockOverlay, 0, 0);
+    lv_obj_add_flag(_keyLockOverlay, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(_keyLockOverlay, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_flex_flow(_keyLockOverlay, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(_keyLockOverlay, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_align(_keyLockOverlay, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_move_foreground(_keyLockOverlay);
 
-    lv_obj_t* icon = lv_label_create(_keyLockOverlay);
+    lv_obj_t* card = lv_obj_create(_keyLockOverlay);
+#else
+    // T-Deck: centered card directly on lv_layer_top. QWERTY+trackball
+    // input is blocked via handleKeyShortcuts checking isKeyLocked().
+    _keyLockOverlay = lv_obj_create(lv_layer_top());
+    lv_obj_t* card = _keyLockOverlay;
+#endif
+
+    lv_obj_set_size(card, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_color(card, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
+    lv_obj_set_style_pad_all(card, theme::PAD_LARGE, 0);
+    lv_obj_set_style_pad_row(card, theme::PAD_SMALL, 0);
+    lv_obj_set_style_radius(card, 8, 0);
+    lv_obj_set_style_border_width(card, 2, 0);
+    lv_obj_set_style_border_color(card, theme::TEXT_SECONDARY, 0);
+    lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_flex_flow(card, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(card, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_center(card);
+
+    lv_obj_t* icon = lv_label_create(card);
     lv_label_set_text(icon, LV_SYMBOL_KEYBOARD);
     lv_obj_set_style_text_font(icon, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(icon, theme::TEXT_PRIMARY, 0);
 
-    lv_obj_t* title = lv_label_create(_keyLockOverlay);
+    lv_obj_t* title = lv_label_create(card);
     lv_label_set_text(title, t("key_locked"));
     lv_obj_set_style_text_font(title, FONT_LARGE, 0);
     lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY, 0);
 
-    lv_obj_t* hint = lv_label_create(_keyLockOverlay);
+    lv_obj_t* hint = lv_label_create(card);
     lv_label_set_text(hint, t("key_lock_hint"));
     lv_obj_set_style_text_font(hint, FONT_SMALL, 0);
     lv_obj_set_style_text_color(hint, theme::TEXT_SECONDARY, 0);
