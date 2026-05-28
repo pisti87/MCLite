@@ -23,9 +23,6 @@ private:
     lv_obj_t* _screen    = nullptr;
     lv_obj_t* _list      = nullptr;
     lv_obj_t* _emptyHint = nullptr;
-#ifdef PLATFORM_TWATCH
-    lv_obj_t* _gearBtn   = nullptr;  // T-Watch only: top-right gear → Admin
-#endif
 
     OnConvoSelectCallback _onSelect;
 
