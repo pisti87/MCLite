@@ -54,6 +54,49 @@ public:
     }
 };
 
+// CO5300 wants column/row-start addresses to be even AND width/height to be
+// even. Panel init uses SC=22, EC=431 (width 410): start even, end odd.
+// offset_x=22 (even) preserves parity, so we need LVGL coords: x1 even,
+// width even (=> x2 odd). Same for Y.
+//
+// R4/R5 wrongly forced x2 even and produced odd width — and also fed odd
+// height to LVGL's get_max_row calibration, yielding odd max_row=39 and
+// sub-area y1 values like 39, 78, 117 (all odd) → panel rejected most chunks
+// → near-black screen. R6 returns early when the area is already aligned (so
+// the LVGL probe area 0..0, 0..39 and full-screen invalidates pass through
+// untouched, keeping max_row=40 and the natural chunking), and only fixes
+// small dirty regions by snapping start UP to even and trimming end to make
+// width/height even.
+static void co5300RounderCb(lv_disp_drv_t* /*drv*/, lv_area_t* area) {
+    // X axis
+    lv_coord_t w = area->x2 - area->x1 + 1;
+    if ((area->x1 & 1) || (w & 1)) {
+        lv_coord_t nx1 = (area->x1 + 1) & ~0x1;
+        lv_coord_t nx2 = area->x2;
+        if (nx1 <= nx2) {
+            if ((nx2 - nx1 + 1) & 1) nx2 -= 1;
+            if (nx1 <= nx2) {
+                area->x1 = nx1;
+                area->x2 = nx2;
+            }
+        }
+    }
+
+    // Y axis
+    lv_coord_t h = area->y2 - area->y1 + 1;
+    if ((area->y1 & 1) || (h & 1)) {
+        lv_coord_t ny1 = (area->y1 + 1) & ~0x1;
+        lv_coord_t ny2 = area->y2;
+        if (ny1 <= ny2) {
+            if ((ny2 - ny1 + 1) & 1) ny2 -= 1;
+            if (ny1 <= ny2) {
+                area->y1 = ny1;
+                area->y2 = ny2;
+            }
+        }
+    }
+}
+
 }  // anonymous namespace
 
 lv_disp_draw_buf_t Display::_drawBuf;
@@ -97,6 +140,7 @@ bool Display::init() {
     _dispDrv.hor_res  = Display::width();
     _dispDrv.ver_res  = Display::height();
     _dispDrv.flush_cb = flushCb;
+    _dispDrv.rounder_cb = co5300RounderCb;
     _dispDrv.draw_buf = &_drawBuf;
     _dispDrv.user_data = this;
     lv_disp_drv_register(&_dispDrv);
