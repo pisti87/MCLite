@@ -36,11 +36,16 @@ void ChatScreen::create(lv_obj_t* parent) {
     // GESTURE_BUBBLE must be CLEARED so LVGL stops the gesture-bubble walk
     // here and actually dispatches LV_EVENT_GESTURE to _screen (otherwise
     // the walk runs past every ancestor to NULL and no event is sent).
+    // Suppressed while the on-screen keyboard is up so finger-drags across
+    // keys (especially when releasing on a right-edge key) don't escape to
+    // navigation.
     lv_obj_clear_flag(_screen, LV_OBJ_FLAG_GESTURE_BUBBLE);
     lv_obj_add_event_cb(_screen, [](lv_event_t* e) {
+        auto* self = static_cast<ChatScreen*>(lv_event_get_user_data(e));
+        if (self->_kbd && !lv_obj_has_flag(self->_kbd, LV_OBJ_FLAG_HIDDEN)) return;
         lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
         if (dir == LV_DIR_RIGHT) UIManager::instance().goHome();
-    }, LV_EVENT_GESTURE, nullptr);
+    }, LV_EVENT_GESTURE, this);
 #endif
 
     lv_obj_add_flag(_screen, LV_OBJ_FLAG_HIDDEN);
@@ -134,6 +139,7 @@ void ChatScreen::createInputBar() {
         lv_obj_set_style_shadow_width(_cannedBtn, 0, 0);
         lv_obj_set_style_border_width(_cannedBtn, 0, 0);
         lv_obj_set_style_pad_all(_cannedBtn, 0, 0);
+        lv_obj_set_ext_click_area(_cannedBtn, 8);
         lv_obj_add_event_cb(_cannedBtn, cannedBtnCb, LV_EVENT_CLICKED, this);
 
         lv_obj_t* cannedLbl = lv_label_create(_cannedBtn);
@@ -150,6 +156,7 @@ void ChatScreen::createInputBar() {
     lv_textarea_set_one_line(_textarea, true);
     lv_textarea_set_max_length(_textarea, 160);  // MeshCore MAX_TEXT_LEN
     lv_textarea_set_placeholder_text(_textarea, t("chat_placeholder"));
+    lv_obj_set_ext_click_area(_textarea, 8);
     lv_obj_set_style_text_font(_textarea, FONT_BODY, 0);
     lv_obj_set_style_text_color(_textarea, theme::TEXT_PRIMARY, 0);
     lv_obj_set_style_bg_color(_textarea, theme::BG_SECONDARY, 0);
@@ -164,6 +171,7 @@ void ChatScreen::createInputBar() {
     lv_obj_set_style_shadow_width(_gpsBtn, 0, 0);
     lv_obj_set_style_border_width(_gpsBtn, 0, 0);
     lv_obj_set_style_pad_all(_gpsBtn, 0, 0);
+    lv_obj_set_ext_click_area(_gpsBtn, 8);
     lv_obj_add_event_cb(_gpsBtn, gpsBtnCb, LV_EVENT_CLICKED, this);
 
     lv_obj_t* gpsLbl = lv_label_create(_gpsBtn);
@@ -177,13 +185,101 @@ void ChatScreen::createInputBar() {
     lv_obj_set_size(_sendBtn, theme::BTN_SEND_W, theme::BTN_SEND_H);
     lv_obj_set_style_bg_color(_sendBtn, theme::ACCENT, 0);
     lv_obj_set_style_radius(_sendBtn, 4, 0);
+    lv_obj_set_ext_click_area(_sendBtn, 8);
     lv_obj_add_event_cb(_sendBtn, sendBtnCb, LV_EVENT_CLICKED, this);
 
     lv_obj_t* sendLbl = lv_label_create(_sendBtn);
     lv_label_set_text(sendLbl, t("btn_send"));
     lv_obj_set_style_text_font(sendLbl, FONT_BODY, 0);
     lv_obj_center(sendLbl);
+
+#ifdef PLATFORM_TWATCH
+    // On-screen QWERTY keyboard for the touch-only T-Watch. Parented to
+    // `_screen` so it z-orders above the chat area and input bar; anchored
+    // to the bottom of `_screen`. Linked to `_textarea` so keys go directly
+    // into the chat draft. Hidden by default — showKeyboard() also lifts
+    // the input bar above the keyboard so the textarea stays visible.
+    _kbd = lv_keyboard_create(_screen);
+    lv_obj_set_size(_kbd, Display::width(), 200);
+    lv_obj_align(_kbd, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_keyboard_set_textarea(_kbd, _textarea);
+    lv_obj_add_flag(_kbd, LV_OBJ_FLAG_HIDDEN);
+    // iOS-style enlarged popover above the pressed key. Must run BEFORE
+    // setting NO_REPEAT — set_popovers calls update_ctrl_map which replaces
+    // the entire ctrl_map with the LVGL default, wiping any flags set
+    // beforehand.
+    lv_keyboard_set_popovers(_kbd, true);
+    // Disable long-press auto-repeat — holding a key would otherwise type it
+    // every 100 ms (LVGL's LV_EVENT_LONG_PRESSED_REPEAT cycle).
+    lv_btnmatrix_set_btn_ctrl_all(_kbd, LV_BTNMATRIX_CTRL_NO_REPEAT);
+
+    // Pressed-state styling: brighter accent bg + bigger glyph so the
+    // popover above the finger is legible.
+    lv_obj_set_style_text_font(_kbd, FONT_BODY, LV_PART_ITEMS);
+    lv_obj_set_style_text_font(_kbd, FONT_TITLE, LV_PART_ITEMS | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_color(_kbd, theme::ACCENT, LV_PART_ITEMS | LV_STATE_PRESSED);
+    lv_obj_set_style_text_color(_kbd, lv_color_white(), LV_PART_ITEMS | LV_STATE_PRESSED);
+    lv_obj_set_style_radius(_kbd, 4, LV_PART_ITEMS);
+    // Tighter inter-key padding → bigger hit area per key. Also strips the
+    // keyboard's outer padding so keys at the edge fill all the way out.
+    lv_obj_set_style_pad_all(_kbd, 2, 0);
+    lv_obj_set_style_pad_gap(_kbd, 2, 0);
+
+    // Tap textarea → show keyboard
+    lv_obj_add_event_cb(_textarea, [](lv_event_t* e) {
+        auto* self = static_cast<ChatScreen*>(lv_event_get_user_data(e));
+        self->showKeyboard();
+    }, LV_EVENT_CLICKED, this);
+
+    // Keyboard Enter (OK key) → send. Keyboard X (CANCEL) → just hide.
+    // Re-apply NO_REPEAT only on VALUE_CHANGED (key press / mode switch):
+    // doing it on every event including LV_EVENT_DRAW_* invalidates all 40+
+    // keys per frame and tanks rendering perf.
+    lv_obj_add_event_cb(_kbd, [](lv_event_t* e) {
+        auto* self = static_cast<ChatScreen*>(lv_event_get_user_data(e));
+        lv_event_code_t code = lv_event_get_code(e);
+        if (code == LV_EVENT_VALUE_CHANGED) {
+            lv_btnmatrix_set_btn_ctrl_all(self->_kbd, LV_BTNMATRIX_CTRL_NO_REPEAT);
+        }
+        if (code == LV_EVENT_READY) {
+            const char* text = lv_textarea_get_text(self->_textarea);
+            if (text && strlen(text) > 0 && self->_currentConvo && self->_onSend) {
+                self->_onSend(*self->_currentConvo, String(text));
+                lv_textarea_set_text(self->_textarea, "");
+            }
+            self->hideKeyboard();
+        } else if (code == LV_EVENT_CANCEL) {
+            self->hideKeyboard();
+        }
+    }, LV_EVENT_ALL, this);
+#endif
 }
+
+#ifdef PLATFORM_TWATCH
+void ChatScreen::showKeyboard() {
+    if (!_kbd) return;
+    constexpr int KBD_H = 200;
+    lv_obj_clear_flag(_kbd, LV_OBJ_FLAG_HIDDEN);
+    // Lift input bar above the keyboard so the textarea stays visible.
+    lv_obj_align(_inputBar, LV_ALIGN_BOTTOM_MID, 0, -KBD_H);
+    // Shrink chat area to fit between header and the now-raised input bar.
+    lv_obj_set_height(_chatArea,
+        Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT
+        - theme::CHAT_HEADER_HEIGHT - theme::CHAT_INPUT_HEIGHT - KBD_H);
+    scrollToBottom();
+}
+
+void ChatScreen::hideKeyboard() {
+    if (!_kbd) return;
+    lv_obj_add_flag(_kbd, LV_OBJ_FLAG_HIDDEN);
+    // Restore input bar to the bottom of _screen and chat area to full.
+    lv_obj_align(_inputBar, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_height(_chatArea,
+        Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT
+        - theme::CHAT_HEADER_HEIGHT - theme::CHAT_INPUT_HEIGHT);
+    scrollToBottom();
+}
+#endif
 
 void ChatScreen::open(const ConvoId& id) {
     _currentConvo.reset(new ConvoId(id));
@@ -376,6 +472,11 @@ void ChatScreen::addMessageToView(const Message& msg) {
 }
 
 void ChatScreen::scrollToBottom() {
+    // Flush LVGL's deferred layout so the new bubble's height is committed
+    // before we compute the scroll target — otherwise LV_COORD_MAX clamps to
+    // the stale content height and the latest message ends up below the
+    // viewport (visually: the chat "jumps up" off the new message).
+    lv_obj_update_layout(_chatArea);
     lv_obj_scroll_to_y(_chatArea, LV_COORD_MAX, LV_ANIM_ON);
 }
 
@@ -502,6 +603,9 @@ void ChatScreen::sendBtnCb(lv_event_t* e) {
         self->_onSend(*self->_currentConvo, String(text));
         lv_textarea_set_text(self->_textarea, "");
     }
+#ifdef PLATFORM_TWATCH
+    self->hideKeyboard();
+#endif
 }
 
 void ChatScreen::backBtnCb(lv_event_t* e) {

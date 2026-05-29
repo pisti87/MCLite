@@ -43,6 +43,9 @@ private:
     lv_obj_t* _cannedBtnm    = nullptr;  // btnmatrix picker overlay
     lv_obj_t* _cannedOverlay = nullptr;
     lv_obj_t* _headerName = nullptr;
+#ifdef PLATFORM_TWATCH
+    lv_obj_t* _kbd        = nullptr;  // T-Watch only: on-screen keyboard
+#endif
 
     std::unique_ptr<ConvoId> _currentConvo;
 
@@ -56,6 +59,10 @@ private:
     void createInputBar();
     void updateGpsButtonColor();
     void showCannedPicker();
+#ifdef PLATFORM_TWATCH
+    void showKeyboard();
+    void hideKeyboard();
+#endif
     void hideCannedPicker();
 
     void addBubble(const Message& msg);
