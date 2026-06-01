@@ -9,7 +9,7 @@
     "f_flash": "80000000L",
     "flash_mode": "qio",
     "mcu": "esp32s3",
-    "psram_type": "qio",
+    "psram_type": "qspi",
     "variant": "esp32s3"
   },
   "connectivity": ["wifi", "bluetooth"],

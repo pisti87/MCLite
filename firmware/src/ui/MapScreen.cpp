@@ -4,20 +4,40 @@
 #include "../storage/TileLoader.h"
 #include "../util/slippy.h"
 #include "../hal/GPS.h"
+#ifdef PLATFORM_TDECK
 #include "../input/Keyboard.h"
 #include "../input/Trackball.h"
+#endif
 #include <math.h>
 #include <algorithm>
+#include <esp_heap_caps.h>
 
 namespace mclite {
 
 static constexpr int TILE = SLIPPY_TILE_SIZE;  // 256
 
+// Touch-button sizing: finger-friendly on T-Watch, compact on T-Deck.
+#ifdef PLATFORM_TWATCH
+static constexpr int MAP_BTN          = 56;
+// MapScreen takes over the whole display via lv_scr_load(), so it doesn't
+// benefit from the status bar / footer absorbing the rounded-corner safe
+// area. Inset corner-anchored widgets explicitly so the close button and
+// info label clear the bezel curve.
+static constexpr int MAP_CORNER_INSET = 36;
+#define MAP_BTN_FONT FONT_HEADING
+#else
+static constexpr int MAP_BTN          = 32;
+static constexpr int MAP_CORNER_INSET = 0;
+#define MAP_BTN_FONT FONT_NORMAL
+#endif
+
 void MapScreen::open(double contactLat, double contactLon, const String& contactName) {
     if (_screen) return;  // already open
 
-    _lat = contactLat;
-    _lon = contactLon;
+    _contactLat = contactLat;
+    _contactLon = contactLon;
+    _centerLat  = contactLat;
+    _centerLon  = contactLon;
     _contactName = contactName;
 
     // Snapshot available zooms and pick an initial level before building the
@@ -29,36 +49,54 @@ void MapScreen::open(double contactLat, double contactLon, const String& contact
     }
     pickInitialZoom();
 
-    // Allocate canvas buffer in PSRAM.
-    _cbuf = (lv_color_t*)ps_malloc(CANVAS_W * CANVAS_H * sizeof(lv_color_t));
-    if (!_cbuf) {
-        Serial.println("[MapScreen] ps_malloc canvas failed");
+    // Canvas buffer lives in PSRAM and is reserved ONCE per device lifetime
+    // — re-malloc on every open() can fail when PSRAM is fragmented (a
+    // 410×502×2 = 412 KB contiguous block isn't trivial after the device has
+    // been running a while). heap_caps_malloc with explicit SPIRAM cap also
+    // avoids ps_malloc's silent fall-through to internal RAM that wouldn't
+    // fit anyway.
+    static lv_color_t* s_cbuf = nullptr;
+    const size_t bytes = (size_t)CANVAS_W * (size_t)CANVAS_H * sizeof(lv_color_t);
+    if (!s_cbuf) {
+        s_cbuf = (lv_color_t*)heap_caps_malloc(bytes,
+            MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    }
+    if (!s_cbuf) {
+        Serial.printf("[MapScreen] PSRAM alloc failed (%u B); free SPIRAM=%u "
+                      "largest=%u\n", (unsigned)bytes,
+                      (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+                      (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
         return;
     }
+    _cbuf = s_cbuf;
 
     _prevScreen = lv_scr_act();
     buildWidgets();
 
-    // Swap input group: save previous (UIManager's main group), install our own.
+#ifdef PLATFORM_TDECK
+    // Swap input group on T-Deck so the trackball/keyboard target the map
+    // buttons; T-Watch is touch-only and doesn't need group navigation.
     _prevGroup = UIManager::instance().inputGroup();
     _mapGroup = lv_group_create();
     lv_group_add_obj(_mapGroup, _closeBtn);
     lv_group_add_obj(_mapGroup, _zoomInBtn);
+    lv_group_add_obj(_mapGroup, _centerBtn);
     lv_group_add_obj(_mapGroup, _zoomOutBtn);
     lv_group_focus_obj(_closeBtn);
     if (Keyboard::instance().indev())
         lv_indev_set_group(Keyboard::instance().indev(), _mapGroup);
     if (Trackball::instance().indev())
         lv_indev_set_group(Trackball::instance().indev(), _mapGroup);
+#endif
 
     lv_scr_load(_screen);
     render();
-    Serial.printf("[MapScreen] opened (%.5f, %.5f) z=%u\n", _lat, _lon, (unsigned)_zoom);
 }
 
 void MapScreen::close() {
     if (!_screen) return;
 
+#ifdef PLATFORM_TDECK
     // Restore input groups.
     if (_prevGroup) {
         if (Keyboard::instance().indev())
@@ -70,6 +108,7 @@ void MapScreen::close() {
         lv_group_del(_mapGroup);
         _mapGroup = nullptr;
     }
+#endif
 
     // Restore previous screen and delete ours.
     if (_prevScreen && _prevScreen != _screen) {
@@ -77,10 +116,9 @@ void MapScreen::close() {
     }
     destroyWidgets();
 
-    if (_cbuf) {
-        free(_cbuf);
-        _cbuf = nullptr;
-    }
+    // Don't free _cbuf — it's a shared PSRAM reservation owned by open()'s
+    // static slot. Just drop our pointer so isOpen() returns false correctly.
+    _cbuf = nullptr;
     _prevScreen = nullptr;
     _prevGroup = nullptr;
     _zooms.clear();
@@ -94,7 +132,7 @@ void MapScreen::pickInitialZoom() {
     int chosen = (int)_zooms.size() - 1;
     for (int i = (int)_zooms.size() - 1; i >= 0; i--) {
         uint8_t z = _zooms[i];
-        TileFrac f = latLonToTileXY(_lat, _lon, z);
+        TileFrac f = latLonToTileXY(_contactLat, _contactLon, z);
         int tx = (int)floor(f.x);
         int ty = (int)floor(f.y);
         if (loader.tileExists(z, tx, ty)) { chosen = i; break; }
@@ -109,64 +147,98 @@ void MapScreen::buildWidgets() {
     lv_obj_clear_flag(_screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_pad_all(_screen, 0, 0);
 
-    // Canvas (full-screen).
+    // Canvas (full-screen). Clickable so the canvas can swallow PRESS events
+    // for drag-to-pan; buttons sit z-above and capture their own taps.
     _canvas = lv_canvas_create(_screen);
     lv_canvas_set_buffer(_canvas, _cbuf, CANVAS_W, CANVAS_H, LV_IMG_CF_TRUE_COLOR);
     lv_obj_set_pos(_canvas, 0, 0);
+    lv_obj_add_flag(_canvas, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(_canvas, &MapScreen::panPressedCb,  LV_EVENT_PRESSED,  this);
+    lv_obj_add_event_cb(_canvas, &MapScreen::panPressingCb, LV_EVENT_PRESSING, this);
+    lv_obj_add_event_cb(_canvas, &MapScreen::panReleasedCb, LV_EVENT_RELEASED, this);
 
     auto styleBtn = [](lv_obj_t* b) {
-        lv_obj_set_size(b, theme::BTN_ACTION_W, theme::BTN_ACTION_H);
-        lv_obj_set_style_radius(b, theme::BTN_ACTION_W / 2, 0);
+        lv_obj_set_size(b, MAP_BTN, MAP_BTN);
+        lv_obj_set_style_radius(b, MAP_BTN / 2, 0);
         lv_obj_set_style_bg_color(b, theme::BG_SECONDARY, 0);
         lv_obj_set_style_bg_opa(b, LV_OPA_70, 0);
         lv_obj_set_style_border_width(b, 1, 0);
         lv_obj_set_style_border_color(b, theme::TEXT_SECONDARY, 0);
         lv_obj_set_style_pad_all(b, 0, 0);
+#ifdef PLATFORM_TWATCH
+        lv_obj_set_ext_click_area(b, 8);
+#endif
     };
 
-    // Close button (top-left).
+    auto styleLbl = [](lv_obj_t* lbl) {
+        lv_obj_set_style_text_font(lbl, MAP_BTN_FONT, 0);
+        lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY, 0);
+        lv_obj_center(lbl);
+    };
+
+    // Right-edge button stack — same placement on both boards, just sized
+    // larger on T-Watch via MAP_BTN. Vertical layout: close at top, then
+    // zoom-in / center / zoom-out centered on the right edge.
     _closeBtn = lv_btn_create(_screen);
     styleBtn(_closeBtn);
-    lv_obj_align(_closeBtn, LV_ALIGN_TOP_LEFT,
-                 theme::SAFE_AREA_LEFT + theme::PAD_SMALL,
-                 theme::SAFE_AREA_TOP  + theme::PAD_SMALL);
-    lv_obj_t* closeLbl = lv_label_create(_closeBtn);
-    lv_label_set_text(closeLbl, LV_SYMBOL_CLOSE);
-    lv_obj_center(closeLbl);
+    lv_obj_align(_closeBtn, LV_ALIGN_TOP_RIGHT,
+                 -(MAP_CORNER_INSET + theme::PAD_SMALL),
+                  (MAP_CORNER_INSET + theme::PAD_SMALL));
+    {
+        lv_obj_t* lbl = lv_label_create(_closeBtn);
+        lv_label_set_text(lbl, LV_SYMBOL_CLOSE);
+        styleLbl(lbl);
+    }
     lv_obj_add_event_cb(_closeBtn, &MapScreen::closeBtnCb, LV_EVENT_CLICKED, this);
 
-    // Zoom-in button (top-right).
     _zoomInBtn = lv_btn_create(_screen);
     styleBtn(_zoomInBtn);
-    lv_obj_align(_zoomInBtn, LV_ALIGN_TOP_RIGHT,
+    lv_obj_align(_zoomInBtn, LV_ALIGN_RIGHT_MID,
                  -(theme::SAFE_AREA_RIGHT + theme::PAD_SMALL),
-                 theme::SAFE_AREA_TOP + theme::PAD_SMALL);
-    lv_obj_t* inLbl = lv_label_create(_zoomInBtn);
-    lv_label_set_text(inLbl, LV_SYMBOL_PLUS);
-    lv_obj_center(inLbl);
+                 -(MAP_BTN + theme::PAD_SMALL));
+    {
+        lv_obj_t* lbl = lv_label_create(_zoomInBtn);
+        lv_label_set_text(lbl, LV_SYMBOL_PLUS);
+        styleLbl(lbl);
+    }
     lv_obj_add_event_cb(_zoomInBtn, &MapScreen::zoomInCb, LV_EVENT_CLICKED, this);
 
-    // Zoom-out button (below +).
+    _centerBtn = lv_btn_create(_screen);
+    styleBtn(_centerBtn);
+    lv_obj_align(_centerBtn, LV_ALIGN_RIGHT_MID,
+                 -(theme::SAFE_AREA_RIGHT + theme::PAD_SMALL),
+                 0);
+    {
+        lv_obj_t* lbl = lv_label_create(_centerBtn);
+        lv_label_set_text(lbl, LV_SYMBOL_GPS);
+        styleLbl(lbl);
+    }
+    lv_obj_add_event_cb(_centerBtn, &MapScreen::centerBtnCb, LV_EVENT_CLICKED, this);
+
     _zoomOutBtn = lv_btn_create(_screen);
     styleBtn(_zoomOutBtn);
-    lv_obj_align(_zoomOutBtn, LV_ALIGN_TOP_RIGHT,
+    lv_obj_align(_zoomOutBtn, LV_ALIGN_RIGHT_MID,
                  -(theme::SAFE_AREA_RIGHT + theme::PAD_SMALL),
-                 theme::SAFE_AREA_TOP + 36);
-    lv_obj_t* outLbl = lv_label_create(_zoomOutBtn);
-    lv_label_set_text(outLbl, LV_SYMBOL_MINUS);
-    lv_obj_center(outLbl);
+                  (MAP_BTN + theme::PAD_SMALL));
+    {
+        lv_obj_t* lbl = lv_label_create(_zoomOutBtn);
+        lv_label_set_text(lbl, LV_SYMBOL_MINUS);
+        styleLbl(lbl);
+    }
     lv_obj_add_event_cb(_zoomOutBtn, &MapScreen::zoomOutCb, LV_EVENT_CLICKED, this);
 
     // Info label (bottom-left): zoom level + scale text.
     _infoLabel = lv_label_create(_screen);
-    lv_obj_set_style_text_font(_infoLabel, FONT_SMALL, 0);
+    lv_obj_set_style_text_font(_infoLabel, FONT_BODY, 0);
     lv_obj_set_style_text_color(_infoLabel, theme::TEXT_PRIMARY, 0);
     lv_obj_set_style_bg_color(_infoLabel, theme::BG_SECONDARY, 0);
     lv_obj_set_style_bg_opa(_infoLabel, LV_OPA_70, 0);
     lv_obj_set_style_pad_all(_infoLabel, 3, 0);
-    lv_obj_align(_infoLabel, LV_ALIGN_BOTTOM_LEFT, 4, -4);
+    lv_obj_align(_infoLabel, LV_ALIGN_BOTTOM_LEFT,
+                  (MAP_CORNER_INSET + theme::PAD_SMALL),
+                 -(MAP_CORNER_INSET + theme::PAD_SMALL));
 
-    // Screen-level key handler for Esc / +/- shortcuts.
+    // Screen-level key handler for Esc / +/- shortcuts (T-Deck keyboard).
     lv_obj_add_event_cb(_screen, &MapScreen::screenKeyCb, LV_EVENT_KEY, this);
 }
 
@@ -175,7 +247,7 @@ void MapScreen::destroyWidgets() {
         lv_obj_del(_screen);
         _screen = nullptr;
     }
-    _canvas = _closeBtn = _zoomInBtn = _zoomOutBtn = _infoLabel = nullptr;
+    _canvas = _closeBtn = _zoomInBtn = _zoomOutBtn = _centerBtn = _infoLabel = nullptr;
 }
 
 void MapScreen::render() {
@@ -188,11 +260,12 @@ void MapScreen::render() {
     lv_obj_invalidate(_canvas);
     updateZoomButtons();
     updateInfoLabel();
+    _lastRenderMs = millis();
 }
 
 void MapScreen::renderTiles() {
-    // World-pixel of centre; canvas (0,0) = topLeft.
-    TileFrac f = latLonToTileXY(_lat, _lon, _zoom);
+    // World-pixel of viewport centre; canvas (0,0) = topLeft.
+    TileFrac f = latLonToTileXY(_centerLat, _centerLon, _zoom);
     const double cpx = f.x * (double)TILE;
     const double cpy = f.y * (double)TILE;
     const double topLeftX = cpx - CANVAS_W / 2.0;
@@ -211,11 +284,7 @@ void MapScreen::renderTiles() {
             const int dstX = (int)(tx * TILE - topLeftX);
             const int dstY = (int)(ty * TILE - topLeftY);
 
-            if (ty < 0 || ty >= n) {
-                // Above/below map: leave at grey (canvas starts zeroed then
-                // fillGrey anyway for missing tiles).
-                continue;
-            }
+            if (ty < 0 || ty >= n) continue;
             int wrappedTx = tx % n;
             if (wrappedTx < 0) wrappedTx += n;
             loader.decodeInto(_cbuf, CANVAS_W, CANVAS_H, dstX, dstY, _zoom, wrappedTx, ty);
@@ -251,8 +320,16 @@ static void drawRect(lv_color_t* buf, int bufW, int bufH, int x0, int y0, int w,
 }
 
 void MapScreen::drawContactMarker() {
-    // Contact is always at canvas centre (map is centred on it).
-    drawDot(_cbuf, CANVAS_W, CANVAS_H, CANVAS_W / 2, CANVAS_H / 2, 5,
+    // Position relative to viewport centre. When _centerLat/Lon == contact,
+    // this lands on canvas centre; after panning, the marker visually drifts.
+    TileFrac fk = latLonToTileXY(_contactLat, _contactLon, _zoom);
+    TileFrac fc = latLonToTileXY(_centerLat,  _centerLon,  _zoom);
+    const int dx = (int)((fk.x - fc.x) * (double)TILE);
+    const int dy = (int)((fk.y - fc.y) * (double)TILE);
+    const int px = CANVAS_W / 2 + dx;
+    const int py = CANVAS_H / 2 + dy;
+    if (px < -6 || px >= CANVAS_W + 6 || py < -6 || py >= CANVAS_H + 6) return;
+    drawDot(_cbuf, CANVAS_W, CANVAS_H, px, py, 5,
             theme::ACCENT, lv_color_white());
 }
 
@@ -266,7 +343,7 @@ void MapScreen::drawOwnMarker() {
     else                       { olat = gps.cachedLat(); olon = gps.cachedLon(); }
 
     TileFrac fo = latLonToTileXY(olat, olon, _zoom);
-    TileFrac fc = latLonToTileXY(_lat, _lon, _zoom);
+    TileFrac fc = latLonToTileXY(_centerLat, _centerLon, _zoom);
     const int dx = (int)((fo.x - fc.x) * (double)TILE);
     const int dy = (int)((fo.y - fc.y) * (double)TILE);
     const int px = CANVAS_W / 2 + dx;
@@ -291,22 +368,16 @@ void MapScreen::drawCrosshair() {
 }
 
 void MapScreen::drawScaleBar() {
-    const double mpp = metersPerPixel(_lat, _zoom);
     const int barLen = 50;  // pixels
     const int barX   = 4;
     const int barY   = CANVAS_H - 20;
-    // Solid bar + white ends
     drawRect(_cbuf, CANVAS_W, CANVAS_H, barX, barY, barLen, 2, lv_color_white());
-    drawRect(_cbuf, CANVAS_W, CANVAS_H, barX,            barY - 3, 1, 8, lv_color_white());
+    drawRect(_cbuf, CANVAS_W, CANVAS_H, barX,              barY - 3, 1, 8, lv_color_white());
     drawRect(_cbuf, CANVAS_W, CANVAS_H, barX + barLen - 1, barY - 3, 1, 8, lv_color_white());
-
-    // Label text is on _infoLabel (LVGL), redundant with scale bar — keep bar
-    // as visual reference; info label shows zoom + meters/50px.
-    (void)mpp;
 }
 
 void MapScreen::updateInfoLabel() {
-    const double mpp = metersPerPixel(_lat, _zoom);
+    const double mpp = metersPerPixel(_centerLat, _zoom);
     const double metersPer50 = mpp * 50.0;
     char buf[48];
     if (metersPer50 >= 1000.0) {
@@ -315,7 +386,9 @@ void MapScreen::updateInfoLabel() {
         snprintf(buf, sizeof(buf), "z=%u  %d m", (unsigned)_zoom, (int)(metersPer50 + 0.5));
     }
     lv_label_set_text(_infoLabel, buf);
-    lv_obj_align(_infoLabel, LV_ALIGN_BOTTOM_LEFT, 4, -4);
+    lv_obj_align(_infoLabel, LV_ALIGN_BOTTOM_LEFT,
+                  (MAP_CORNER_INSET + theme::PAD_SMALL),
+                 -(MAP_CORNER_INSET + theme::PAD_SMALL));
 }
 
 void MapScreen::updateZoomButtons() {
@@ -354,6 +427,14 @@ void MapScreen::zoomOutCb(lv_event_t* e) {
     }
 }
 
+void MapScreen::centerBtnCb(lv_event_t* e) {
+    MapScreen* self = static_cast<MapScreen*>(lv_event_get_user_data(e));
+    if (!self) return;
+    self->_centerLat = self->_contactLat;
+    self->_centerLon = self->_contactLon;
+    self->render();
+}
+
 void MapScreen::screenKeyCb(lv_event_t* e) {
     MapScreen* self = static_cast<MapScreen*>(lv_event_get_user_data(e));
     if (!self) return;
@@ -371,6 +452,62 @@ void MapScreen::screenKeyCb(lv_event_t* e) {
         default:
             break;
     }
+}
+
+// --- pan handlers ---
+
+void MapScreen::panPressedCb(lv_event_t* e) {
+    MapScreen* self = static_cast<MapScreen*>(lv_event_get_user_data(e));
+    if (!self) return;
+    lv_indev_t* indev = lv_indev_get_act();
+    if (!indev) return;
+    lv_indev_get_point(indev, &self->_panLast);
+    self->_panActive = true;
+}
+
+void MapScreen::panPressingCb(lv_event_t* e) {
+    MapScreen* self = static_cast<MapScreen*>(lv_event_get_user_data(e));
+    if (!self || !self->_panActive) return;
+    lv_indev_t* indev = lv_indev_get_act();
+    if (!indev) return;
+    lv_point_t now;
+    lv_indev_get_point(indev, &now);
+
+    int dxPx = now.x - self->_panLast.x;
+    int dyPx = now.y - self->_panLast.y;
+    if (dxPx == 0 && dyPx == 0) return;
+
+    // Convert pixel delta → lat/lon delta. See plan for derivation.
+    //   delta_lon =       -dx_px * 360 / (256 * 2^z)
+    //   delta_lat = +dy_px * 360 * cos(centerLatRad) / (256 * 2^z)
+    const double s = 360.0 / (256.0 * (double)(1 << self->_zoom));
+    const double cosLat = cos(self->_centerLat * M_PI / 180.0);
+    self->_centerLon += -(double)dxPx * s;
+    self->_centerLat += (double)dyPx * s * cosLat;
+
+    // Clamp lat to Mercator-safe range (slippy.h already clamps inside
+    // latLonToTileXY but keeping the state value sane avoids weird Center
+    // behavior near the poles).
+    if (self->_centerLat >  SLIPPY_LAT_MAX) self->_centerLat =  SLIPPY_LAT_MAX;
+    if (self->_centerLat < -SLIPPY_LAT_MAX) self->_centerLat = -SLIPPY_LAT_MAX;
+    while (self->_centerLon >= 180.0) self->_centerLon -= 360.0;
+    while (self->_centerLon < -180.0) self->_centerLon += 360.0;
+
+    self->_panLast = now;
+
+    // Throttle redraw — PNG decode + canvas blit at 410×502 can't keep up
+    // with the 30 Hz indev polling on a fast swipe.
+    if (millis() - self->_lastRenderMs >= 30) {
+        self->render();  // updates _lastRenderMs
+    }
+}
+
+void MapScreen::panReleasedCb(lv_event_t* e) {
+    MapScreen* self = static_cast<MapScreen*>(lv_event_get_user_data(e));
+    if (!self || !self->_panActive) return;
+    self->_panActive = false;
+    // Commit final position even if throttled away.
+    self->render();
 }
 
 }  // namespace mclite

@@ -9,7 +9,9 @@
 namespace mclite {
 
 // Full-screen map view: renders slippy tiles from SD centred on a contact's
-// location, with +/-/close controls overlaid. No panning.
+// location, with close / zoom-in / center / zoom-out controls overlaid.
+// Drag the canvas with one finger to pan; Center snaps back to the contact's
+// original lat/lon.
 class MapScreen {
 public:
     // Open the screen, save the previously-active screen for restore on close.
@@ -41,7 +43,11 @@ private:
     static void closeBtnCb(lv_event_t* e);
     static void zoomInCb(lv_event_t* e);
     static void zoomOutCb(lv_event_t* e);
+    static void centerBtnCb(lv_event_t* e);
     static void screenKeyCb(lv_event_t* e);
+    static void panPressedCb(lv_event_t* e);
+    static void panPressingCb(lv_event_t* e);
+    static void panReleasedCb(lv_event_t* e);
 
     // --- state ---
     lv_obj_t*   _screen       = nullptr;
@@ -51,13 +57,26 @@ private:
     lv_obj_t*   _closeBtn     = nullptr;
     lv_obj_t*   _zoomInBtn    = nullptr;
     lv_obj_t*   _zoomOutBtn   = nullptr;
+    lv_obj_t*   _centerBtn    = nullptr;
     lv_obj_t*   _infoLabel    = nullptr;
     lv_group_t* _mapGroup     = nullptr;
     lv_group_t* _prevGroup    = nullptr;
 
-    double   _lat = 0.0;
-    double   _lon = 0.0;
+    // Original contact location — set once in open(), used by drawContactMarker
+    // and the Center button. Constant for the lifetime of the screen.
+    double   _contactLat = 0.0;
+    double   _contactLon = 0.0;
     String   _contactName;
+
+    // Current viewport centre — starts at the contact location, mutated by
+    // drag-to-pan and reset by the Center button.
+    double   _centerLat = 0.0;
+    double   _centerLon = 0.0;
+
+    // Pan-gesture state.
+    bool        _panActive    = false;
+    lv_point_t  _panLast{0, 0};
+    uint32_t    _lastRenderMs = 0;
 
     std::vector<uint8_t> _zooms;  // snapshot from TileLoader
     int      _zoomIdx = 0;
