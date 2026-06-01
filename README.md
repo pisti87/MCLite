@@ -2,9 +2,9 @@
   <img src="docs/images/mclite-banner.png" alt="MCLite — Off-grid messaging, made simple" width="100%">
 </p>
 
-# MCLite for T-Deck Plus
+# MCLite for T-Deck Plus & T-Watch Ultra
 
-Lightweight off-grid communicator firmware for the LilyGo T-Deck Plus. Built on [MeshCore](https://github.com/ripplebiz/MeshCore), MCLite is purpose-built for emergency and outdoor communication -- no internet, no cell towers, no training needed. Turn it on and communicate.
+Lightweight off-grid communicator firmware for the LilyGo T-Deck Plus and T-Watch Ultra. Built on [MeshCore](https://github.com/ripplebiz/MeshCore), MCLite is purpose-built for emergency and outdoor communication -- no internet, no cell towers, no training needed. Turn it on and communicate.
 
 MCLite is ideal for groups, families, search and rescue teams, and anyone who needs reliable off-grid messaging. It is fully compatible with other MeshCore devices and companion apps (iOS, Android) -- MCLite users can communicate with anyone on the same MeshCore network. All configuration is done in a single file -- one person sets it up, copies it to everyone's SD card, and the whole group is ready to go. No accounts, no pairing, no per-device setup. Perfect for kids, older family members, or anyone who just needs it to work.
 
@@ -21,21 +21,30 @@ Most features below are optional. The primary goal is to keep things extremely s
 <img src="docs/images/chat-view.jpg" width="400" alt="Chat view screen">
 </p>
 
+## Supported hardware
+
+MCLite runs on two LilyGo ESP32-S3 boards. They share the same SX1262 LoRa radio, so they interoperate on the same mesh and run the same features -- pick whichever form factor suits you (or mix both in one group).
+
+- **[T-Deck Plus](https://lilygo.cc/products/t-deck-plus)** -- handheld with a physical QWERTY keyboard, trackball, GPS, and a 2.8" display. The original, fully-featured target.
+- **[T-Watch Ultra](https://lilygo.cc/products/t-watch-ultra)** -- wrist-worn device with a 2.01" AMOLED touchscreen. Fully touch-driven with an on-screen keyboard.
+
 ## Features
 
 - **Direct messages** -- private encrypted conversations between contacts
 - **Channels** -- group communication via shared or public channels, with optional read-only (listen-only) mode
-- **Room servers** -- join community message boards run by MeshCore room servers (up to 8). Posts arrive on the conversation list with an `R` icon, ordered alongside DMs and channels by last activity. Auto-login on boot with retry; re-login on chat-open and after 10 minutes of silence to recover from brief radio dropouts. Configured via `room_servers` in `config.json` (name, server public key, optional password)
+- **Room servers** -- join community message boards run by MeshCore room servers (up to 8). Posts arrive on the conversation list with an `R` icon, ordered alongside DMs and channels by last activity. Auto-login on boot with retry; re-login on chat-open and after 10 minutes of silence to recover from brief radio dropouts.
 - **Heard adverts** -- browse a rolling 64-entry list of every device your radio has decoded, reachable from the admin screen. Per-row type icon (chat / repeater / room / sensor), hops, last-heard age, GPS when present. Tap a chat advert for the full per-hop path + fingerprint and a one-tap **Save** that adds it to your contact list (queued, applies on next reboot). Manual-advert button announces yourself on demand without waiting for the next periodic cycle
 - **SOS alerts** -- long-press the trackball (hold 6 seconds) to broadcast an emergency alert
 - **Battery alerts** -- automatic low-battery warnings sent to your contacts
 - **GPS location sharing** -- manually send your position in lat/lon or UTMREF/MGRS (military grid) format, used by search and rescue worldwide. Last-known position support when GPS signal is temporarily lost
 - **Telemetry** -- responds to MeshCore-standard telemetry requests (battery, GPS) with per-contact permissions. Compatible with MeshCore companion apps. Optionally request telemetry from contacts to see their battery, location, and distance
-- **Map view** -- visualise a contact's position on a slippy map (optional, requires tile pack on SD card). Zoomable, with own-device marker overlaid
+- **Map view** -- visualise a contact's position on a slippy map (optional, requires tile pack on SD card). Drag to pan, zoomable, with a Center button and own-device marker overlaid
 - **Message history** -- conversations saved to SD card and restored on reboot
 - **Quick replies** -- optional canned message picker for fast responses (OK, Copy, Need help, etc.), translatable and customizable
 - **Multi-language** -- English, German, French, and Italian included. Add your own translations via SD card
 - **Notification sounds** -- chime on incoming messages, alarm on SOS. Supports custom WAV files from SD card
+- **Haptic feedback** (T-Watch Ultra) -- vibration on incoming messages and SOS alerts, independent of the sound mute
+- **Real-time clock** (T-Watch Ultra) -- battery-backed RTC keeps accurate time across reboots and before the first GPS fix
 - **Auto-dim** -- screen and keyboard backlight dim after inactivity to save battery
 - **Multiple input methods** -- QWERTY keyboard, trackball, and touchscreen
 - **Screen lock** -- hold the trackball for 1 second to lock. Key lock blocks all input and unlocks with another 1s hold. PIN lock requires a code to unlock. Optional auto-lock on display dim
@@ -50,11 +59,18 @@ Most features below are optional. The primary goal is to keep things extremely s
 
 **Option 1: Web Flasher (recommended)**
 
-Visit the [MCLite Web Flasher](https://laserir.github.io/MCLite/tools/web-flasher/), select a version, and flash directly from your browser. No software to install -- just Chrome/Edge and a USB cable.
+Visit the [MCLite Web Flasher](https://laserir.github.io/MCLite/tools/web-flasher/), **choose your device** (T-Deck Plus or T-Watch Ultra), select a version, and flash directly from your browser. The flasher walks you through putting your board into download mode. No software to install -- just Chrome/Edge and a USB cable.
 
 **Option 2: Manual**
 
-Download the latest `mclite-v*.bin` from the [Releases](../../releases) page and flash with esptool: `esptool.py write_flash 0x0 mclite-v0.2.0.bin`
+Download the latest binary for your board from the [Releases](../../releases) page -- `mclite-v*.bin` for the **T-Deck Plus**, `mclite-watch-v*.bin` for the **T-Watch Ultra** -- and flash with esptool at offset `0x0`:
+
+```
+esptool.py write_flash 0x0 mclite-v0.2.0.bin          # T-Deck Plus
+esptool.py write_flash 0x0 mclite-watch-v0.2.0.bin    # T-Watch Ultra
+```
+
+The T-Watch Ultra has no power switch -- if esptool can't connect, put it in download mode manually: hold **BOOT**, tap **RST**, release **BOOT**.
 
 ### Set up your config
 
@@ -229,17 +245,20 @@ Region codes in that tool are GeoNames admin1 codes, not the local administrativ
 
 ## Hints
 
-**Shortcuts**
+**Controls & shortcuts**
 
-| Action | How |
-|--------|-----|
-| Device info | Sym + 0 |
-| Mute / unmute | Tap speaker icon in status bar |
-| Contact telemetry | Tap contact name in chat header |
-| Retry failed message | Tap the X on a failed message |
-| Quick reply | Tap the list icon (≡) left of the text input |
-| Lock / unlock | Hold trackball for 1 second |
-| SOS broadcast | Hold trackball for 6 seconds |
+The T-Deck Plus is keyboard + trackball driven; the T-Watch Ultra is touch driven with two physical buttons (lower = BOOT, upper = PWR). Touch shortcuts work the same on both.
+
+| Action | T-Deck Plus | T-Watch Ultra |
+|--------|-------------|---------------|
+| Admin / device info | Sym + 0 | Short-press upper (PWR) button |
+| Lock / unlock | Hold trackball 1s | Hold lower (BOOT) button 1s |
+| SOS broadcast | Hold trackball 6s | Hold lower (BOOT) button 6s |
+| Power off | Slide the power switch | Long-press upper (PWR) button |
+| Mute / unmute | Tap speaker icon in status bar | Same |
+| Contact telemetry | Tap contact name in chat header | Same |
+| Retry failed message | Tap the X on a failed message | Same |
+| Quick reply | Tap the list icon (≡) by the text input | Same |
 
 **Conversation list icons**
 
