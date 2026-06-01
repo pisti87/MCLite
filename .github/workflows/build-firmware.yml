@@ -1,0 +1,124 @@
+name: Build firmware
+
+# Dual-board CI + release publishing.
+#  - pull_request / push to main : build BOTH boards as a fast-fail gate (artifacts only)
+#  - release published           : build BOTH boards, attach merged .bin to the release,
+#                                   then publish them into the web flasher (commit to main)
+#
+# This supersedes the old publish-firmware.yml: the build → publish ordering is enforced
+# by `needs:` so the publish step can never run before the binaries are attached.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env: tdeck_plus
+            prefix: mclite          # → mclite-v{version}.bin   (must match merge_firmware.py)
+          - env: twatch_ultra
+            prefix: mclite-watch    # → mclite-watch-v{version}.bin
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            firmware/.pio
+          key: pio-${{ matrix.env }}-${{ hashFiles('firmware/platformio.ini') }}
+          restore-keys: pio-${{ matrix.env }}-
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build ${{ matrix.env }}
+        run: pio run -d firmware/ -e ${{ matrix.env }}
+
+      - name: Locate merged binary
+        id: bin
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          matches=(firmware/.pio/build/${{ matrix.env }}/${{ matrix.prefix }}-v*.bin)
+          if [ ${#matches[@]} -ne 1 ]; then
+            echo "::error::expected exactly one ${{ matrix.prefix }}-v*.bin, found ${#matches[@]}: ${matches[*]:-none}"
+            exit 1
+          fi
+          echo "path=${matches[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${matches[0]}")" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.bin.outputs.name }}
+          path: ${{ steps.bin.outputs.path }}
+          if-no-files-found: error
+
+      - name: Attach binary to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "${{ steps.bin.outputs.path }}" --clobber
+
+  # Publish the release binaries into the web flasher. Runs only after BOTH board
+  # builds have attached their .bin to the release (guaranteed by `needs: build`).
+  publish:
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Download .bin from release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ github.event.release.tag_name }}" \
+            --pattern "*.bin" \
+            --dir tools/web-flasher/firmware/ \
+            --clobber
+
+      - name: Upload config tool to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            tools/config-tool/mclite_config_tool.html \
+            --clobber
+
+      - name: Keep only last 5 firmware versions per board
+        run: |
+          cd tools/web-flasher/firmware
+          # Each board has its own filename pattern; prune independently so
+          # one board's release cadence can't evict the other board's history.
+          # Patterns must match merge_firmware.py ENV_TO_BIN_PREFIX.
+          ls -t mclite-v*.bin       2>/dev/null | tail -n +6 | xargs -r rm
+          ls -t mclite-watch-v*.bin 2>/dev/null | tail -n +6 | xargs -r rm
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tools/web-flasher/firmware/
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Publish firmware ${{ github.event.release.tag_name }} to web flasher"
+          git push
