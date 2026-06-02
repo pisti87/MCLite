@@ -24,6 +24,7 @@
 
     "key_locked": "Tasten gesperrt",
     "key_lock_hint": "Trackball 1s halten zum Entsperren",
+    "key_lock_hint_watch": "Untere Taste 1s halten zum Entsperren",
 
     "chat_placeholder": "Nachricht...",
     "btn_send": "SENDEN",

@@ -24,6 +24,7 @@
 
     "key_locked": "Touches verrouillees",
     "key_lock_hint": "Maintenir trackball 1s pour deverrouiller",
+    "key_lock_hint_watch": "Maintenir bouton bas 1s pour deverrouiller",
 
     "chat_placeholder": "Message...",
     "btn_send": "ENVOYER",

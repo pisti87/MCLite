@@ -1746,7 +1746,11 @@ void UIManager::showKeyLockOverlay() {
     lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY, 0);
 
     lv_obj_t* hint = lv_label_create(card);
+#ifdef PLATFORM_TWATCH
+    lv_label_set_text(hint, t("key_lock_hint_watch"));
+#else
     lv_label_set_text(hint, t("key_lock_hint"));
+#endif
     lv_obj_set_style_text_font(hint, FONT_SMALL, 0);
     lv_obj_set_style_text_color(hint, theme::TEXT_SECONDARY, 0);
 }

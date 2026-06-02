@@ -24,6 +24,7 @@
 
     "key_locked": "Tasti bloccati",
     "key_lock_hint": "Tenere trackball 1s per sbloccare",
+    "key_lock_hint_watch": "Tenere pulsante inferiore 1s per sbloccare",
 
     "chat_placeholder": "Messaggio...",
     "btn_send": "INVIA",

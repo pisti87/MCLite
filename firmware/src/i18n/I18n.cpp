@@ -35,6 +35,7 @@ const DefaultString DEFAULT_STRINGS[] = {
     // Key lock
     {"key_locked",          "Keys locked"},
     {"key_lock_hint",       "Hold trackball 1s to unlock"},
+    {"key_lock_hint_watch", "Hold lower button 1s to unlock"},
 
     // Chat
     {"chat_placeholder",    "Type message..."},
