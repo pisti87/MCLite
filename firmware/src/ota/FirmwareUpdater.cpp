@@ -108,7 +108,7 @@ bool FirmwareUpdater::flashFromSd(const char* path, ProgressCb cb, void* user) {
 
     f.seek(APP_OFFSET);
     const size_t CHUNK = 4096;
-    uint8_t buf[CHUNK];
+    static uint8_t buf[CHUNK];   // static: keep this 4 KB off the (TLS-heavy) loop-task stack
     size_t written = 0;
     uint8_t lastPct = 255;
     int sinceYield = 0;
@@ -183,7 +183,7 @@ bool FirmwareUpdater::downloadToSd(const char* url, const char* destPath,
 
     WiFiClient* stream = http.getStreamPtr();
     const size_t CHUNK = 4096;
-    uint8_t buf[CHUNK];
+    static uint8_t buf[CHUNK];   // static: keep this 4 KB off the (TLS-heavy) loop-task stack
     int written = 0;
     uint8_t lastPct = 255;
     int sinceYield = 0;
