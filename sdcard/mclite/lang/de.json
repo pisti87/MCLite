@@ -126,6 +126,9 @@
     "wifi_check_updates": "Auf Updates pruefen",
     "wifi_checking": "Pruefe...",
     "wifi_ssid_not_found": "Netzwerk nicht gefunden",
+    "wifi_companion": "WiFi Begleiter",
+    "wifi_companion_addr": "Begleiter %s:5000",
+    "wifi_companion_client": "verbunden",
 
     "heard_adverts_title": "Empfangene Adverts",
     "heard_adverts_empty": "Noch keine Adverts empfangen",

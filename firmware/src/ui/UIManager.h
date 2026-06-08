@@ -51,8 +51,10 @@ public:
     // Called when all retries exhausted (DM failed)
     void onMessageFailed(uint32_t packetId);
 
-    // Send a message from the chat UI
-    void handleSend(const ConvoId& id, const String& text);
+    // Send a message (from the chat UI or the WiFi companion). Sends over the
+    // mesh AND records it in the store/UI, so companion-originated messages show
+    // on-device too. Returns the packet ID (0 on failure).
+    uint32_t handleSend(const ConvoId& id, const String& text);
 
     // Retry a failed DM
     void handleRetry(const ConvoId& id, const String& text, uint32_t oldPacketId);

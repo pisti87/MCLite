@@ -7,6 +7,7 @@
 #include "../config/ConfigManager.h"
 #include "../util/TimeHelper.h"
 #include "../net/WiFiManager.h"
+#include "../companion/CompanionService.h"
 
 namespace mclite {
 
@@ -216,10 +217,16 @@ void StatusBar::update() {
     lv_obj_set_style_text_color(_lblBatt,
         pct <= 20 ? theme::BATTERY_LOW : theme::TEXT_PRIMARY, 0);
 
-    // WiFi icon — visible only while actually connected
+    // WiFi icon — visible only while connected. Green when a companion client is
+    // attached (actively bridging), blue when connected for WiFi only.
     if (_wifiIcon) {
-        if (WiFiManager::instance().isConnected()) lv_obj_clear_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
-        else                                       lv_obj_add_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
+        if (WiFiManager::instance().isConnected()) {
+            lv_obj_clear_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
+            bool companion = CompanionService::instance().clientConnected();
+            lv_obj_set_style_text_color(_wifiIcon, companion ? theme::ONLINE_DOT : theme::ACCENT, 0);
+        } else {
+            lv_obj_add_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 
     // Clock — show HH:MM in local time (auto-DST via POSIX TZ). Prefer GPS

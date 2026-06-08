@@ -9,6 +9,7 @@
 #include "../i18n/I18n.h"
 #include "../ota/UpdateChecker.h"
 #include "../util/version.h"
+#include "../companion/CompanionService.h"
 
 namespace mclite {
 
@@ -76,6 +77,28 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
     _switch = lv_switch_create(ctl);
     lv_obj_add_event_cb(_switch, switchCb, LV_EVENT_VALUE_CHANGED, this);
 
+    // Companion-mode row (enabled only while WiFi is connected). Turning it on
+    // exposes the radio to a phone/PC client over the MeshCore companion protocol.
+    _companionRow = lv_obj_create(_screen);
+    lv_obj_set_size(_companionRow, theme::CONTENT_WIDTH, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_color(_companionRow, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_radius(_companionRow, 4, 0);
+    lv_obj_set_style_border_width(_companionRow, 0, 0);
+    lv_obj_set_style_pad_all(_companionRow, theme::PAD_SMALL, 0);
+    lv_obj_clear_flag(_companionRow, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_flex_flow(_companionRow, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(_companionRow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    _companionLabel = lv_label_create(_companionRow);
+    lv_label_set_long_mode(_companionLabel, LV_LABEL_LONG_DOT);
+    lv_obj_set_flex_grow(_companionLabel, 1);
+    lv_obj_set_style_text_font(_companionLabel, FONT_BODY, 0);
+    lv_obj_set_style_text_color(_companionLabel, theme::TEXT_PRIMARY, 0);
+    lv_label_set_text(_companionLabel, t("wifi_companion"));
+
+    _companionSwitch = lv_switch_create(_companionRow);
+    lv_obj_add_event_cb(_companionSwitch, companionSwitchCb, LV_EVENT_VALUE_CHANGED, this);
+
     // "Check for updates" button (shown only while connected)
     _checkBtn = lv_btn_create(_screen);
     lv_obj_set_width(_checkBtn, theme::CONTENT_WIDTH);
@@ -119,6 +142,12 @@ void WiFiSetupScreen::tick() {
         updateStatusUi();
         if (c) clearList();                       // connected → hide the picker
     }
+    // Refresh the companion label when a client attaches/detaches.
+    bool cc = CompanionService::instance().clientConnected();
+    if (cc != _lastCompanionClient) {
+        _lastCompanionClient = cc;
+        updateStatusUi();
+    }
 }
 
 void WiFiSetupScreen::hide() {
@@ -132,6 +161,7 @@ void WiFiSetupScreen::hide() {
         }
         lv_group_remove_obj(_closeBtn);
         lv_group_remove_obj(_switch);
+        lv_group_remove_obj(_companionSwitch);
         lv_group_remove_obj(_checkBtn);
     }
     // Leave WiFi connected if the user turned it on — the status-bar icon reflects it.
@@ -157,10 +187,38 @@ void WiFiSetupScreen::updateStatusUi() {
         lv_label_set_text(_statusLabel, t("wifi_off"));
         lv_obj_add_flag(_checkBtn, LV_OBJ_FLAG_HIDDEN);
     }
+
+    // Companion row — only operable while WiFi is connected.
+    auto& comp = CompanionService::instance();
+    if (connected) {
+        lv_obj_clear_state(_companionSwitch, LV_STATE_DISABLED);
+        bool on = comp.wifiCompanionEnabled();
+        if (on) lv_obj_add_state(_companionSwitch, LV_STATE_CHECKED);
+        else    lv_obj_clear_state(_companionSwitch, LV_STATE_CHECKED);
+        if (on) {
+            static char cbuf[96];
+            snprintf(cbuf, sizeof(cbuf), t("wifi_companion_addr"), wm.localIp().c_str());
+            String cs = cbuf;
+            if (comp.clientConnected()) cs += String(" (") + t("wifi_companion_client") + ")";
+            lv_label_set_text(_companionLabel, cs.c_str());
+        } else {
+            lv_label_set_text(_companionLabel, t("wifi_companion"));
+        }
+    } else {
+        // WiFi off → companion can't run: force off + disable the switch.
+        if (comp.wifiCompanionEnabled()) comp.setWifiCompanionEnabled(false);
+        lv_obj_clear_state(_companionSwitch, LV_STATE_CHECKED);
+        lv_obj_add_state(_companionSwitch, LV_STATE_DISABLED);
+        lv_label_set_text(_companionLabel, t("wifi_companion"));
+    }
+
     lv_group_t* grp = UIManager::instance().inputGroup();
     if (grp) {
         lv_group_add_obj(grp, _switch);
-        if (connected) lv_group_add_obj(grp, _checkBtn);
+        if (connected) {
+            lv_group_add_obj(grp, _companionSwitch);
+            lv_group_add_obj(grp, _checkBtn);
+        }
         lv_group_add_obj(grp, _closeBtn);
     }
 }
@@ -403,6 +461,19 @@ void WiFiSetupScreen::switchCb(lv_event_t* e) {
     } else {
         self->doDisconnect();
     }
+}
+
+void WiFiSetupScreen::companionSwitchCb(lv_event_t* e) {
+    auto* self = static_cast<WiFiSetupScreen*>(lv_event_get_user_data(e));
+    if (!self) return;
+    // Only meaningful while WiFi is up (the switch is disabled otherwise).
+    if (!WiFiManager::instance().isConnected()) {
+        lv_obj_clear_state(self->_companionSwitch, LV_STATE_CHECKED);
+        return;
+    }
+    bool on = lv_obj_has_state(self->_companionSwitch, LV_STATE_CHECKED);
+    CompanionService::instance().setWifiCompanionEnabled(on);  // main loop starts/stops it
+    self->updateStatusUi();
 }
 
 void WiFiSetupScreen::checkBtnCb(lv_event_t* e) {

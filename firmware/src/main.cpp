@@ -17,6 +17,9 @@
 #include "i18n/I18n.h"
 #include "storage/TelemetryCache.h"
 #include "util/TimeHelper.h"
+#include "net/WiFiManager.h"
+#include "companion/CompanionService.h"
+#include <helpers/esp32/SerialWifiInterface.h>
 #ifdef PLATFORM_TWATCH
 #include <Wire.h>
 #include "hal/twatch/Expander.h"
@@ -27,9 +30,15 @@
 
 using namespace mclite;
 
+// WiFi-TCP companion transport (port 5000). Server is bound lazily once WiFi is
+// up; CompanionService enable/disables it. (5d: WiFi companion mode.)
+static SerialWifiInterface g_companionWifi;
+static bool g_companionWifiServerStarted = false;
+
 // Forward declarations
 static void setupMeshCallbacks();
 static void handleKeyShortcuts();
+static void updateCompanion();
 
 void setup() {
     Serial.begin(115200);
@@ -236,6 +245,7 @@ void loop() {
 #endif
     }
     MeshManager::instance().update();
+    updateCompanion();
     UIManager::instance().update();
     Speaker::instance().update();
 
@@ -246,6 +256,27 @@ void loop() {
     UIManager::instance().checkBatteryAlert();
 
     delay(5);
+}
+
+// Drive the WiFi companion link. Runs only when the user enables "WiFi Companion
+// Mode" (WiFi setup screen) AND WiFi is connected. Auto-suspends if WiFi drops
+// and resumes when it returns, without losing the user's choice.
+static void updateCompanion() {
+    auto& comp = CompanionService::instance();
+    const bool wifiUp = WiFiManager::instance().isConnected();
+    const bool want = comp.wifiCompanionEnabled() && wifiUp;
+
+    if (want && !comp.active()) {
+        if (!g_companionWifiServerStarted) {
+            g_companionWifi.begin(5000);
+            g_companionWifiServerStarted = true;
+            Serial.println("[Companion] WiFi TCP server listening on :5000");
+        }
+        comp.begin(&g_companionWifi);
+    } else if (!want && comp.active()) {
+        comp.end();
+    }
+    comp.loop();
 }
 
 static void setupMeshCallbacks() {
@@ -282,10 +313,12 @@ static void setupMeshCallbacks() {
 
     mesh.onAck([](uint32_t packetId) {
         UIManager::instance().onAckReceived(packetId);
+        CompanionService::instance().onAckConfirmed(packetId);   // -> SEND_CONFIRMED
     });
 
     mesh.onFail([](uint32_t packetId) {
         UIManager::instance().onMessageFailed(packetId);
+        CompanionService::instance().onSendFailed(packetId);
     });
 
     mesh.onAdvert([](const uint8_t* senderKey) {

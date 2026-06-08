@@ -57,6 +57,7 @@ MCLite runs on two LilyGo ESP32-S3 boards. They share the same SX1262 LoRa radio
 - **Offgrid mode** -- one-flag toggle that switches to the community offgrid frequency (433/869/918 MHz, auto-picked from your normal frequency) and relays packets for other offgrid nodes. Camping / hiking / SAR scenarios where no repeaters exist. Toggle on-device from the admin screen or via config tool, reboot to apply. While offgrid, only other offgrid peers receive your messages, SOS, and battery alerts.
 - **Update from SD card** -- drop a firmware `.bin` on the SD card and the device offers to install it on boot (or from the admin screen) -- no USB needed
 - **Update over WiFi** -- optionally connect to WiFi on-device (scan + enter password) and check GitHub for newer firmware; download and install with one tap. Off by default
+- **WiFi companion mode** -- bridge the radio to a phone/desktop/CLI over WiFi using the standard MeshCore companion protocol, *in parallel* with normal on-device use (messages appear in both). Enable the "WiFi Companion" switch on the WiFi screen once connected; works with `meshcore-cli`/`meshcore.js`/`meshcore_py`. Messaging is read-only for config (no remote edits). See note below
 - **Zero-config for end users** -- all settings live in one JSON file on the SD card. Set it up once, copy to every device in your group
 
 ## Getting Started
@@ -72,8 +73,8 @@ Visit the [MCLite Web Flasher](https://laserir.github.io/MCLite/tools/web-flashe
 Download the latest binary for your board from the [Releases](../../releases) page -- `mclite-v*.bin` for the **T-Deck Plus**, `mclite-watch-v*.bin` for the **T-Watch Ultra** -- and flash with esptool at offset `0x0`:
 
 ```
-esptool.py write_flash 0x0 mclite-v0.2.2.bin          # T-Deck Plus
-esptool.py write_flash 0x0 mclite-watch-v0.2.2.bin    # T-Watch Ultra
+esptool.py write_flash 0x0 mclite-v0.3.0.bin          # T-Deck Plus
+esptool.py write_flash 0x0 mclite-watch-v0.3.0.bin    # T-Watch Ultra
 ```
 
 The T-Watch Ultra has no power switch -- if esptool can't connect, put it in download mode manually: hold **BOOT**, tap **RST**, release **BOOT**.
@@ -84,6 +85,25 @@ Once MCLite is installed you can update it without a computer:
 
 - **From SD card** -- copy a newer merged binary (`mclite-v*.bin` for the T-Deck Plus, `mclite-watch-v*.bin` for the T-Watch Ultra) to the SD card. On the next boot the device detects it and offers **Install / Cancel**, then flashes and reboots. The file is renamed afterwards so it won't re-prompt.
 - **Over WiFi** -- on the device go to **Admin → WiFi**, switch WiFi on, pick your network and enter the password (saved for next time), then tap **Check for updates**. If a newer release exists on GitHub it downloads and installs. Enable **auto-update** (config tool → WiFi, or it checks on boot when on) to be prompted automatically.
+
+### WiFi companion mode
+
+Use a phone, desktop, or CLI as a companion to the radio while the device keeps working normally — messages appear in both places at once.
+
+1. On the device: **Admin → WiFi**, switch WiFi **on** and connect to your network.
+2. Turn on the **WiFi Companion** switch (enabled once WiFi is connected). The row shows `Companion <ip>:5000`.
+3. From a computer on the same network, connect a MeshCore companion client to that address, e.g.:
+   ```
+   pip install meshcore-cli
+   meshcore-cli -t <device-ip> -p 5000 infos      # or: contacts, recv, chan_msg, etc.
+   ```
+   (`meshcore.js` and `meshcore_py` work too.) The status-bar WiFi icon turns **green** while a client is attached.
+
+Notes:
+- **One transport, one client at a time** — WiFi/BLE/USB companion modes are mutually exclusive by design (the protocol is single-session). Only WiFi is implemented so far; BLE (for the mobile apps) and USB are planned.
+- **Read-only config** — the companion can read contacts/channels and send/receive messages, but cannot change radio settings, contacts, channels, or keys.
+- **No LAN auth** — the WiFi transport has no pairing (the protocol's only auth is BLE pairing). Only enable it on networks you trust. Real auth arrives with the BLE transport.
+- **Known limitation** — messages **typed on the device itself** do not appear in the companion app. The MeshCore companion protocol has no event for a firmware-composed message (it assumes the app is the sole composer). Everything else mirrors both ways: received messages and app-sent messages show on the device and in the app.
 
 ### Set up your config
 

@@ -557,7 +557,7 @@ void UIManager::onMessageFailed(uint32_t packetId) {
     }
 }
 
-void UIManager::handleSend(const ConvoId& id, const String& text) {
+uint32_t UIManager::handleSend(const ConvoId& id, const String& text) {
     uint32_t packetId = 0;
     bool isDM   = (id.type == ConvoId::DM);
     bool isRoom = (id.type == ConvoId::ROOM);
@@ -616,10 +616,18 @@ void UIManager::handleSend(const ConvoId& id, const String& text) {
     bool isPrivate = convo ? convo->isPrivate : false;
     MessageStore::instance().addMessage(id, displayName, isPrivate, msg);
 
-    // Update chat view
-    _chatScreen.addMessageToView(msg);
+    // Update the view only if this conversation is on screen (companion sends may
+    // target a conversation that isn't currently open).
+    bool viewingThis = (_currentScreen == Screen::CHAT && _chatScreen.currentConvo() &&
+                        *_chatScreen.currentConvo() == id);
+    if (viewingThis) {
+        _chatScreen.addMessageToView(msg);
+    } else if (_currentScreen == Screen::CONVO_LIST) {
+        _convoList.refresh();
+    }
 
     _lastActivity = millis();
+    return packetId;
 }
 
 // ─── Room callbacks (wired from main.cpp setupMeshCallbacks) ───

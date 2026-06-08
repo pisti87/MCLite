@@ -131,6 +131,9 @@ const DefaultString DEFAULT_STRINGS[] = {
     {"wifi_check_updates",       "Check for updates"},
     {"wifi_checking",            "Checking..."},
     {"wifi_ssid_not_found",      "Network not found"},
+    {"wifi_companion",           "WiFi Companion"},
+    {"wifi_companion_addr",      "Companion %s:5000"},
+    {"wifi_companion_client",    "connected"},
 
     // Telemetry
     {"telem_title",         "Contact Info"},

@@ -6,6 +6,7 @@
 #include "../config/ConfigManager.h"
 #include "../hal/GPS.h"
 #include "../util/TimeHelper.h"
+#include "../companion/CompanionService.h"
 
 #include <SPI.h>
 #include <RadioLib.h>
@@ -70,6 +71,8 @@ void MeshManager::wireCallbacks() {
             _onMessage(String(contact.name), contact.id.pub_key,
                        String(text), timestamp);
         }
+        // Tee to the companion link (raw text, native pubkey).
+        CompanionService::instance().onContactMessage(contact.id.pub_key, timestamp, text);
     });
 
     // Incoming group message
@@ -80,6 +83,10 @@ void MeshManager::wireCallbacks() {
         // Find which of our channels this message belongs to
         int meshIdx = _mesh->findChannelIdx(channel);
         if (meshIdx < 0) return;
+
+        // Tee to the companion link using the mesh channel index (matches the
+        // index the client got from GET_CHANNEL) and the raw "sender: msg" text.
+        CompanionService::instance().onChannelMessage((uint8_t)meshIdx, timestamp, text);
 
         // Map MeshCore channel index back to our ChannelStore index
         auto& channels = ChannelStore::instance();
@@ -159,6 +166,10 @@ void MeshManager::wireCallbacks() {
         if (roomIdx < 0) return;
         _onRoomLogin((size_t)roomIdx, String(contact.name), status, permissions);
     });
+}
+
+const uint8_t* MeshManager::selfPubKey() const {
+    return _mesh ? _mesh->selfPubKey() : nullptr;
 }
 
 bool MeshManager::loginRoom(size_t roomIdx, uint32_t& estTimeout) {
