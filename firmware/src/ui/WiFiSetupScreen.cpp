@@ -188,7 +188,7 @@ void WiFiSetupScreen::updateStatusUi() {
         lv_obj_add_flag(_checkBtn, LV_OBJ_FLAG_HIDDEN);
     }
 
-    // Companion row — only operable while WiFi is connected.
+    // WiFi companion row — only operable while WiFi is connected.
     auto& comp = CompanionService::instance();
     if (connected) {
         lv_obj_clear_state(_companionSwitch, LV_STATE_DISABLED);

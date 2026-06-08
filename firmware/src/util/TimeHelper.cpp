@@ -1,4 +1,5 @@
 #include "TimeHelper.h"
+#include "util/log.h"
 #include "../config/ConfigManager.h"
 #include <sys/time.h>
 #include <Arduino.h>
@@ -23,7 +24,7 @@ void TimeHelper::applyTimezone() {
         if (isValidPosixTz(cfg.gpsTimezone)) {
             tz = cfg.gpsTimezone;
         } else {
-            Serial.printf("[Time] Invalid timezone string: \"%s\" — ignoring, using offset fallback\n",
+            LOGF("[Time] Invalid timezone string: \"%s\" — ignoring, using offset fallback\n",
                           cfg.gpsTimezone.c_str());
         }
     }
@@ -41,7 +42,7 @@ void TimeHelper::applyTimezone() {
 
     setenv("TZ", tz.c_str(), 1);
     tzset();
-    Serial.printf("[Time] Timezone: %s\n", tz.c_str());
+    LOGF("[Time] Timezone: %s\n", tz.c_str());
 }
 
 uint32_t TimeHelper::nowEpoch() const {

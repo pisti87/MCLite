@@ -34,10 +34,13 @@ public:
     bool active() const { return _iface != nullptr; }
     bool clientConnected() const { return _iface && _iface->isConnected(); }
 
-    // Desired WiFi-companion state (set by the WiFi screen switch; session-only).
-    // main.cpp starts/stops the transport based on this + WiFi connectivity.
-    void setWifiCompanionEnabled(bool on) { _wifiWanted = on; }
+    // Desired companion state (set by the WiFi screen switches; session-only).
+    // main.cpp starts/stops the transport based on these + connectivity. The two
+    // are mutually exclusive — one transport + one client at a time.
+    void setWifiCompanionEnabled(bool on) { _wifiWanted = on; if (on) _usbWanted = false; }
     bool wifiCompanionEnabled() const { return _wifiWanted; }
+    void setUsbCompanionEnabled(bool on)  { _usbWanted = on;  if (on) _wifiWanted = false; }
+    bool usbCompanionEnabled() const { return _usbWanted; }
 
     // ACK bridge (5d.3): MeshManager forwards DM ACK/fail here so the client gets
     // PUSH_CODE_SEND_CONFIRMED and stops re-sending. Safe to call when inactive.
@@ -85,6 +88,7 @@ private:
     BaseSerialInterface* _iface = nullptr;
     uint8_t _appVer = 0;   // protocol version the connected app negotiated
     bool _wifiWanted = false;   // WiFi companion desired (UI switch)
+    bool _usbWanted  = false;   // USB companion desired (UI switch)
 
     // GET_CONTACTS streaming state (single client → single iteration at a time)
     bool     _contactsIterating  = false;

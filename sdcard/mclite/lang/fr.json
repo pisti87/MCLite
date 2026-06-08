@@ -129,6 +129,9 @@
     "wifi_companion": "Compagnon WiFi",
     "wifi_companion_addr": "Compagnon %s:5000",
     "wifi_companion_client": "connecte",
+    "usb_companion": "Compagnon USB",
+    "usb_companion_addr": "Compagnon: USB",
+    "usb_companion_hint": "Relie la radio a un ordinateur via USB. Les logs s'arretent quand actif.",
 
     "heard_adverts_title": "Adverts recus",
     "heard_adverts_empty": "Aucun advert recu",

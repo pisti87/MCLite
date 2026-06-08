@@ -87,6 +87,7 @@ void StatusBar::create(lv_obj_t* parent) {
     lv_obj_add_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
 
     _lblBatt = lv_label_create(_iconRow);
+    lv_label_set_recolor(_lblBatt, true);   // recolor the charge bolt independently
     lv_obj_set_style_text_font(_lblBatt, FONT_STATUSBAR_ICON, 0);
     lv_obj_set_style_text_color(_lblBatt, theme::TEXT_PRIMARY, 0);
 
@@ -157,6 +158,7 @@ void StatusBar::create(lv_obj_t* parent) {
 
     // Battery
     _lblBatt = lv_label_create(_bar);
+    lv_label_set_recolor(_lblBatt, true);   // recolor the charge bolt independently
     lv_obj_set_style_text_font(_lblBatt, FONT_SMALL, 0);
     lv_obj_set_style_text_color(_lblBatt, theme::TEXT_PRIMARY, 0);
 
@@ -207,9 +209,16 @@ void StatusBar::update() {
     else if (pct > 20) battIcon = LV_SYMBOL_BATTERY_1;
     else                battIcon = LV_SYMBOL_BATTERY_EMPTY;
 
+    // A USB companion client actively bridging → tint just the charge bolt green
+    // (recolor markup); the battery glyph keeps its normal/low color.
+    auto& comp = CompanionService::instance();
+    bool usbBridging = comp.usbCompanionEnabled() && comp.clientConnected();
     if (batt.isCharging()) {
-        static char battBuf[16];
-        snprintf(battBuf, sizeof(battBuf), "%s " LV_SYMBOL_CHARGE, battIcon);
+        static char battBuf[32];
+        if (usbBridging)
+            snprintf(battBuf, sizeof(battBuf), "%s #00cc66 " LV_SYMBOL_CHARGE "#", battIcon);
+        else
+            snprintf(battBuf, sizeof(battBuf), "%s " LV_SYMBOL_CHARGE, battIcon);
         lv_label_set_text(_lblBatt, battBuf);
     } else {
         lv_label_set_text(_lblBatt, battIcon);
@@ -222,8 +231,10 @@ void StatusBar::update() {
     if (_wifiIcon) {
         if (WiFiManager::instance().isConnected()) {
             lv_obj_clear_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
-            bool companion = CompanionService::instance().clientConnected();
-            lv_obj_set_style_text_color(_wifiIcon, companion ? theme::ONLINE_DOT : theme::ACCENT, 0);
+            // Green only when the WiFi transport is the one bridging a client
+            // (not when USB companion is active).
+            bool wifiBridging = comp.wifiCompanionEnabled() && comp.clientConnected();
+            lv_obj_set_style_text_color(_wifiIcon, wifiBridging ? theme::ONLINE_DOT : theme::ACCENT, 0);
         } else {
             lv_obj_add_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
         }

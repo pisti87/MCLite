@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "util/log.h"
 
 #include "hal/boards/board.h"
 #include "config/defaults.h"
@@ -20,6 +21,7 @@
 #include "net/WiFiManager.h"
 #include "companion/CompanionService.h"
 #include <helpers/esp32/SerialWifiInterface.h>
+#include <helpers/ArduinoSerialInterface.h>
 #ifdef PLATFORM_TWATCH
 #include <Wire.h>
 #include "hal/twatch/Expander.h"
@@ -30,10 +32,13 @@
 
 using namespace mclite;
 
-// WiFi-TCP companion transport (port 5000). Server is bound lazily once WiFi is
-// up; CompanionService enable/disables it. (5d: WiFi companion mode.)
+// Companion transports (mutually exclusive — one client at a time). WiFi-TCP
+// (port 5000) is bound lazily once WiFi is up; USB runs over the USB-CDC Serial
+// and mutes debug logging while active (the binary protocol can't share the port).
 static SerialWifiInterface g_companionWifi;
 static bool g_companionWifiServerStarted = false;
+static ArduinoSerialInterface g_companionUsb;
+static bool g_companionUsbStarted = false;
 
 // Forward declarations
 static void setupMeshCallbacks();
@@ -43,7 +48,7 @@ static void updateCompanion();
 void setup() {
     Serial.begin(115200);
     delay(500);
-    Serial.printf("\n=== MCLite v%s ===\n", MCLITE_VERSION);
+    LOGF("\n=== MCLite v%s ===\n", MCLITE_VERSION);
 
     // Enable board power
 #ifdef PLATFORM_TDECK
@@ -68,7 +73,7 @@ void setup() {
 #endif
 
     // 1. Display + LVGL (configures SPI bus via LovyanGFX)
-    Serial.println("[Boot] Display...");
+    LOGLN("[Boot] Display...");
     Display::instance().init();
     Display::instance().setBrightness(180);
 
@@ -81,19 +86,19 @@ void setup() {
     // 4. SD Card + Config
     //    Show status before SD ops, then no more LVGL until SD is done
     Display::instance().setBootStatus("Reading SD card...");
-    Serial.println("[Boot] SD Card...");
+    LOGLN("[Boot] SD Card...");
     bool sdOk = SDCard::instance().init();
 
-    Serial.println("[Boot] Config...");
+    LOGLN("[Boot] Config...");
     auto configResult = ConfigManager::LoadResult::LOAD_NO_FILE;
     if (sdOk) {
         configResult = ConfigManager::instance().load();
         if (configResult == ConfigManager::LOAD_NO_FILE) {
-            Serial.println("[Boot] First boot — generating config");
+            LOGLN("[Boot] First boot — generating config");
             ConfigManager::instance().generate();
             configResult = ConfigManager::instance().load();  // Re-load → LOAD_OK
         } else if (configResult == ConfigManager::LOAD_ERROR) {
-            Serial.println("[Boot] Config corrupt — using defaults");
+            LOGLN("[Boot] Config corrupt — using defaults");
         }
     }
 
@@ -154,17 +159,17 @@ void setup() {
 
     // 9. Switch from boot screen to main UI, then clean up boot screen
     if (!sdOk) {
-        Serial.println("[Boot] No SD card!");
+        LOGLN("[Boot] No SD card!");
         UIManager::instance().loadMainScreen();
         Display::instance().hideBootScreen();
         UIManager::instance().showSetupScreen(UIManager::NO_SD);
     } else if (configResult == ConfigManager::LOAD_NO_FILE) {
-        Serial.println("[Boot] No config file!");
+        LOGLN("[Boot] No config file!");
         UIManager::instance().loadMainScreen();
         Display::instance().hideBootScreen();
         UIManager::instance().showSetupScreen(UIManager::NO_CONFIG);
     } else if (configResult == ConfigManager::LOAD_ERROR) {
-        Serial.println("[Boot] Config error!");
+        LOGLN("[Boot] Config error!");
         UIManager::instance().loadMainScreen();
         Display::instance().hideBootScreen();
         UIManager::instance().showSetupScreen(UIManager::CONFIG_ERROR);
@@ -185,7 +190,7 @@ void setup() {
         if (cfgMut.deviceName == defaults::DEVICE_NAME && cfgMut.publicKey.length() >= 8) {
             cfgMut.deviceName = String("MCLite-") + cfgMut.publicKey.substring(0, 8);
             ConfigManager::instance().save();
-            Serial.printf("[Boot] Device name set to: %s\n", cfgMut.deviceName.c_str());
+            LOGF("[Boot] Device name set to: %s\n", cfgMut.deviceName.c_str());
         }
 
         // Ensure history directory exists
@@ -226,7 +231,7 @@ void setup() {
         UIManager::instance().checkForWiFiUpdateOnBoot();
     }
 
-    Serial.println("[Boot] Ready!");
+    LOGLN("[Boot] Ready!");
 }
 
 void loop() {
@@ -264,18 +269,30 @@ void loop() {
 static void updateCompanion() {
     auto& comp = CompanionService::instance();
     const bool wifiUp = WiFiManager::instance().isConnected();
-    const bool want = comp.wifiCompanionEnabled() && wifiUp;
 
-    if (want && !comp.active()) {
+    // Pick at most one transport (the switches are mutually exclusive): USB if
+    // enabled, else WiFi when enabled AND connected.
+    BaseSerialInterface* desired = nullptr;
+    bool usbActive = false;
+    if (comp.usbCompanionEnabled()) {
+        if (!g_companionUsbStarted) { g_companionUsb.begin(Serial); g_companionUsbStarted = true; }
+        desired = &g_companionUsb;
+        usbActive = true;
+    } else if (comp.wifiCompanionEnabled() && wifiUp) {
         if (!g_companionWifiServerStarted) {
             g_companionWifi.begin(5000);
             g_companionWifiServerStarted = true;
-            Serial.println("[Companion] WiFi TCP server listening on :5000");
+            LOGLN("[Companion] WiFi TCP server listening on :5000");
         }
-        comp.begin(&g_companionWifi);
-    } else if (!want && comp.active()) {
-        comp.end();
+        desired = &g_companionWifi;
     }
+
+    // Mute debug logs iff USB owns the port. Set before begin() so nothing leaks
+    // onto the binary stream.
+    mclite::g_logMuted = usbActive;
+
+    if (desired) comp.begin(desired);   // begin() is idempotent if already active on it
+    else if (comp.active()) comp.end();
     comp.loop();
 }
 

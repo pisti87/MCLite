@@ -1,4 +1,5 @@
 #include "CompanionService.h"
+#include "util/log.h"
 #include "CompanionProtocol.h"
 
 #include "../config/ConfigManager.h"
@@ -35,7 +36,7 @@ void CompanionService::begin(BaseSerialInterface* iface) {
     _iface = iface;
     _appVer = 0;
     if (_iface) _iface->enable();
-    Serial.println("[Companion] interface enabled");
+    LOGLN("[Companion] interface enabled");
 }
 
 void CompanionService::end() {
@@ -43,7 +44,7 @@ void CompanionService::end() {
     _iface->disable();
     _iface = nullptr;
     _appVer = 0;
-    Serial.println("[Companion] interface disabled");
+    LOGLN("[Companion] interface disabled");
 }
 
 void CompanionService::loop() {
@@ -122,7 +123,7 @@ void CompanionService::cmdAppStart(size_t len) {
     memcpy(&_out[i], name.c_str(), tlen); i += tlen;
 
     _iface->writeFrame(_out, i);
-    Serial.printf("[Companion] APP_START -> SELF_INFO (%d B)\n", i);
+    LOGF("[Companion] APP_START -> SELF_INFO (%d B)\n", i);
 
     // App is now fully connected (DEVICE_QUERY set _appVer first) — replay history.
     backfillHistory();
@@ -164,7 +165,7 @@ void CompanionService::cmdDeviceQuery(size_t len) {
     _out[i++] = radio.pathHashMode;      // path_hash_mode (v10+)
 
     _iface->writeFrame(_out, i);
-    Serial.printf("[Companion] DEVICE_QUERY (appVer=%u) -> DEVICE_INFO (%d B)\n", _appVer, i);
+    LOGF("[Companion] DEVICE_QUERY (appVer=%u) -> DEVICE_INFO (%d B)\n", _appVer, i);
 }
 
 // CMD_SEND_TXT_MSG -> RESP_CODE_SENT (DM). Layout: [1]=txt_type [2]=attempt
@@ -398,7 +399,7 @@ void CompanionService::enqueueOffline(const uint8_t* frame, int len) {
         // Drop the oldest to make room (bounded, never blocks).
         for (int i = 0; i < OFFLINE_QUEUE_SIZE - 1; i++) _offline[i] = _offline[i + 1];
         _offlineLen = OFFLINE_QUEUE_SIZE - 1;
-        Serial.println("[Companion] offline queue full — dropped oldest");
+        LOGLN("[Companion] offline queue full — dropped oldest");
     }
     _offline[_offlineLen].len = (uint8_t)len;
     memcpy(_offline[_offlineLen].buf, frame, len);
@@ -514,7 +515,7 @@ void CompanionService::backfillHistory() {
         // ROOM conversations are not exposed over the companion link yet.
     }
     if (enqueued > 0) {
-        Serial.printf("[Companion] backfilled %d message(s)\n", enqueued);
+        LOGF("[Companion] backfilled %d message(s)\n", enqueued);
         tickleMsgWaiting();
     }
 }

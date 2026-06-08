@@ -129,6 +129,9 @@
     "wifi_companion": "WiFi Begleiter",
     "wifi_companion_addr": "Begleiter %s:5000",
     "wifi_companion_client": "verbunden",
+    "usb_companion": "USB Begleiter",
+    "usb_companion_addr": "Begleiter: USB",
+    "usb_companion_hint": "Funk per USB mit einem Computer verbinden. Logs pausieren waehrend aktiv.",
 
     "heard_adverts_title": "Empfangene Adverts",
     "heard_adverts_empty": "Noch keine Adverts empfangen",

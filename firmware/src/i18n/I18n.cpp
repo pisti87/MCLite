@@ -1,4 +1,5 @@
 #include "I18n.h"
+#include "util/log.h"
 #include "strings.h"
 #include "../storage/SDCard.h"
 #include <ArduinoJson.h>
@@ -134,6 +135,9 @@ const DefaultString DEFAULT_STRINGS[] = {
     {"wifi_companion",           "WiFi Companion"},
     {"wifi_companion_addr",      "Companion %s:5000"},
     {"wifi_companion_client",    "connected"},
+    {"usb_companion",            "USB Companion"},
+    {"usb_companion_addr",       "Companion: USB"},
+    {"usb_companion_hint",       "Bridge the radio to a computer over USB. Serial logs pause while on."},
 
     // Telemetry
     {"telem_title",         "Contact Info"},
@@ -207,7 +211,7 @@ void I18n::init(const String& langCode) {
 
     if (langCode.isEmpty()) {
         _currentLang = "en";
-        Serial.println("[I18n] Using English (default)");
+        LOGLN("[I18n] Using English (default)");
         return;
     }
 
@@ -217,20 +221,20 @@ void I18n::init(const String& langCode) {
     auto& sd = SDCard::instance();
 
     if (!sd.isMounted() || !sd.fileExists(path.c_str())) {
-        Serial.printf("[I18n] Translation file %s not found, using English\n", path.c_str());
+        LOGF("[I18n] Translation file %s not found, using English\n", path.c_str());
         return;
     }
 
     String json = sd.readFile(path.c_str());
     if (json.isEmpty()) {
-        Serial.println("[I18n] Empty translation file, using English");
+        LOGLN("[I18n] Empty translation file, using English");
         return;
     }
 
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, json);
     if (err) {
-        Serial.printf("[I18n] Parse error: %s, using English\n", err.c_str());
+        LOGF("[I18n] Parse error: %s, using English\n", err.c_str());
         return;
     }
 
@@ -252,7 +256,7 @@ void I18n::init(const String& langCode) {
     _count = 0;
     _jsonBuf = (char*)malloc(totalLen);
     if (!_jsonBuf) {
-        Serial.println("[I18n] Out of memory for translation");
+        LOGLN("[I18n] Out of memory for translation");
         return;
     }
 
@@ -277,7 +281,7 @@ void I18n::init(const String& langCode) {
         _count++;
     }
 
-    Serial.printf("[I18n] Loaded %d strings for '%s'\n", _count, langCode.c_str());
+    LOGF("[I18n] Loaded %d strings for '%s'\n", _count, langCode.c_str());
 }
 
 const char* I18n::t(const char* key) {

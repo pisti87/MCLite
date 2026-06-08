@@ -57,7 +57,7 @@ MCLite runs on two LilyGo ESP32-S3 boards. They share the same SX1262 LoRa radio
 - **Offgrid mode** -- one-flag toggle that switches to the community offgrid frequency (433/869/918 MHz, auto-picked from your normal frequency) and relays packets for other offgrid nodes. Camping / hiking / SAR scenarios where no repeaters exist. Toggle on-device from the admin screen or via config tool, reboot to apply. While offgrid, only other offgrid peers receive your messages, SOS, and battery alerts.
 - **Update from SD card** -- drop a firmware `.bin` on the SD card and the device offers to install it on boot (or from the admin screen) -- no USB needed
 - **Update over WiFi** -- optionally connect to WiFi on-device (scan + enter password) and check GitHub for newer firmware; download and install with one tap. Off by default
-- **WiFi companion mode** -- bridge the radio to a phone/desktop/CLI over WiFi using the standard MeshCore companion protocol, *in parallel* with normal on-device use (messages appear in both). Enable the "WiFi Companion" switch on the WiFi screen once connected; works with `meshcore-cli`/`meshcore.js`/`meshcore_py`. Messaging is read-only for config (no remote edits). See note below
+- **Companion mode (WiFi / USB)** -- bridge the radio to a phone/desktop/CLI over WiFi or USB using the standard MeshCore companion protocol, *in parallel* with normal on-device use (messages appear in both). Toggle the "WiFi Companion" or "USB Companion" switch on the WiFi screen; works with `meshcore-cli`/`meshcore.js`/`meshcore_py`. One transport at a time; messaging is read-only for config (no remote edits). BLE (mobile apps) is planned. See note below
 - **Zero-config for end users** -- all settings live in one JSON file on the SD card. Set it up once, copy to every device in your group
 
 ## Getting Started
@@ -99,8 +99,14 @@ Use a phone, desktop, or CLI as a companion to the radio while the device keeps 
    ```
    (`meshcore.js` and `meshcore_py` work too.) The status-bar WiFi icon turns **green** while a client is attached.
 
+**Over USB instead:** turn on the **USB Companion** switch (top of the WiFi screen — it works with WiFi off entirely) and connect over the USB-CDC port:
+```
+meshcore-cli -s /dev/ttyACM0 infos
+```
+While USB companion is active the device's **serial debug logging is muted** — the binary protocol and log text can't share the one USB port (and there's no spare log UART on these boards). Logs resume the moment you turn it off. The battery icon turns **green** while a USB client is bridging.
+
 Notes:
-- **One transport, one client at a time** — WiFi/BLE/USB companion modes are mutually exclusive by design (the protocol is single-session). Only WiFi is implemented so far; BLE (for the mobile apps) and USB are planned.
+- **One transport, one client at a time** — WiFi/USB (and future BLE) companion modes are mutually exclusive by design (the protocol is single-session; WiFi+BLE also share the 2.4 GHz radio). Turning one on turns the others off. WiFi and USB are implemented; BLE (for the mobile apps) is planned.
 - **Read-only config** — the companion can read contacts/channels and send/receive messages, but cannot change radio settings, contacts, channels, or keys.
 - **No LAN auth** — the WiFi transport has no pairing (the protocol's only auth is BLE pairing). Only enable it on networks you trust. Real auth arrives with the BLE transport.
 - **Known limitation** — messages **typed on the device itself** do not appear in the companion app. The MeshCore companion protocol has no event for a firmware-composed message (it assumes the app is the sole composer). Everything else mirrors both ways: received messages and app-sent messages show on the device and in the app.

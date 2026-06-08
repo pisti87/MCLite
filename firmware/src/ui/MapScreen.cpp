@@ -1,4 +1,5 @@
 #include "MapScreen.h"
+#include "util/log.h"
 #include "UIManager.h"
 #include "theme.h"
 #include "../storage/TileLoader.h"
@@ -44,7 +45,7 @@ void MapScreen::open(double contactLat, double contactLon, const String& contact
     // canvas — if tiles are unavailable we bail out without allocating.
     _zooms = TileLoader::instance().availableZooms();
     if (_zooms.empty()) {
-        Serial.println("[MapScreen] no tiles available; aborting open");
+        LOGLN("[MapScreen] no tiles available; aborting open");
         return;
     }
     pickInitialZoom();
@@ -62,7 +63,7 @@ void MapScreen::open(double contactLat, double contactLon, const String& contact
             MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     }
     if (!s_cbuf) {
-        Serial.printf("[MapScreen] PSRAM alloc failed (%u B); free SPIRAM=%u "
+        LOGF("[MapScreen] PSRAM alloc failed (%u B); free SPIRAM=%u "
                       "largest=%u\n", (unsigned)bytes,
                       (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
                       (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
@@ -122,7 +123,7 @@ void MapScreen::close() {
     _prevScreen = nullptr;
     _prevGroup = nullptr;
     _zooms.clear();
-    Serial.println("[MapScreen] closed");
+    LOGLN("[MapScreen] closed");
 }
 
 void MapScreen::pickInitialZoom() {

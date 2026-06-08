@@ -1,4 +1,5 @@
 #include "UpdateChecker.h"
+#include "util/log.h"
 
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -30,7 +31,7 @@ bool UpdateChecker::checkLatest(RemoteRelease& out) {
 
     int code = http.GET();
     if (code != HTTP_CODE_OK) {
-        Serial.printf("[Update] GitHub API HTTP %d\n", code);
+        LOGF("[Update] GitHub API HTTP %d\n", code);
         http.end();
         return false;
     }
@@ -41,7 +42,7 @@ bool UpdateChecker::checkLatest(RemoteRelease& out) {
     String payload = http.getString();
     http.end();
     if (payload.length() == 0) {
-        Serial.println("[Update] empty response body");
+        LOGLN("[Update] empty response body");
         return false;
     }
 
@@ -54,7 +55,7 @@ bool UpdateChecker::checkLatest(RemoteRelease& out) {
     DeserializationError err = deserializeJson(doc, payload,
                                                DeserializationOption::Filter(filter));
     if (err) {
-        Serial.printf("[Update] JSON parse: %s\n", err.c_str());
+        LOGF("[Update] JSON parse: %s\n", err.c_str());
         return false;
     }
 
@@ -71,7 +72,7 @@ bool UpdateChecker::checkLatest(RemoteRelease& out) {
             return out.url.length() > 0;
         }
     }
-    Serial.println("[Update] no board-matching asset in latest release");
+    LOGLN("[Update] no board-matching asset in latest release");
     return false;
 }
 

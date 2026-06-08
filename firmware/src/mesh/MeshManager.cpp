@@ -1,4 +1,5 @@
 #include "MeshManager.h"
+#include "util/log.h"
 #include "MCLiteMesh.h"
 #include "ContactStore.h"
 #include "ChannelStore.h"
@@ -35,12 +36,12 @@ MeshManager& MeshManager::instance() {
 bool MeshManager::initRadio() {
     const auto& cfg = ConfigManager::instance().config();
 
-    Serial.println("[Mesh] Initializing SX1262...");
+    LOGLN("[Mesh] Initializing SX1262...");
 
     // Use MeshCore's std_init for TCXO and -707 retry logic
     // Pass NULL to skip SPI.begin() — already initialized by SD card on shared bus
     if (!radio.std_init(NULL)) {
-        Serial.println("[Mesh] Radio init failed");
+        LOGLN("[Mesh] Radio init failed");
         return false;
     }
 
@@ -56,7 +57,7 @@ bool MeshManager::initRadio() {
     radio.setCodingRate(cfg.radio.codingRate);
     radio.setOutputPower(cfg.radio.txPower);
 
-    Serial.println("[Mesh] SX1262 ready");
+    LOGLN("[Mesh] SX1262 ready");
     _radioReady = true;
     return true;
 }
@@ -197,7 +198,7 @@ bool MeshManager::init() {
     ChannelStore::instance().loadFromConfig();
 
     if (!initRadio()) {
-        Serial.println("[Mesh] Radio failed, running in offline mode");
+        LOGLN("[Mesh] Radio failed, running in offline mode");
         return false;
     }
 
@@ -212,13 +213,13 @@ bool MeshManager::init() {
     _mesh->setFrequency(activeFreq);
 
     if (!_mesh->begin(cfg.deviceName.c_str())) {
-        Serial.println("[Mesh] Mesh begin failed");
+        LOGLN("[Mesh] Mesh begin failed");
         delete _mesh;
         _mesh = nullptr;
         return false;
     }
 
-    Serial.println("[Mesh] Initialization complete");
+    LOGLN("[Mesh] Initialization complete");
     return true;
 }
 

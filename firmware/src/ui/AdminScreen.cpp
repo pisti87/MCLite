@@ -10,6 +10,7 @@
 #include "../mesh/MeshManager.h"
 #include "../storage/HeardAdvertCache.h"
 #include "../net/WiFiManager.h"
+#include "../companion/CompanionService.h"
 #include "../storage/MessageStore.h"
 #include "../hal/Battery.h"
 #include "../hal/GPS.h"
@@ -243,6 +244,39 @@ void AdminScreen::show() {
 
         lv_obj_add_event_cb(row, [](lv_event_t* e) {
             UIManager::instance().showScreen(Screen::WIFI_SETUP);
+        }, LV_EVENT_CLICKED, nullptr);
+    }
+
+    // USB companion shortcut — opens a dedicated screen with just the toggle.
+    {
+        lv_obj_t* row = lv_obj_create(_screen);
+        lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
+        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY, 0);
+        lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(row, 0, 0);
+        lv_obj_set_style_radius(row, 4, 0);
+        lv_obj_set_style_pad_all(row, theme::PAD_SMALL, 0);
+        lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_bg_color(row, theme::ACCENT, LV_STATE_FOCUSED);
+        lv_obj_set_style_bg_opa(row, LV_OPA_40, LV_STATE_FOCUSED);
+        lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
+
+        lv_obj_t* ul = lv_label_create(row);
+        lv_obj_set_style_text_font(ul, FONT_BODY, 0);
+        lv_obj_set_style_text_color(ul, theme::TEXT_PRIMARY, 0);
+        String utxt = String(LV_SYMBOL_USB " ") + t("usb_companion");
+        if (CompanionService::instance().usbCompanionEnabled()) utxt += String(" (") + t("on") + ")";
+        lv_label_set_text(ul, utxt.c_str());
+
+        lv_obj_t* chev = lv_label_create(row);
+        lv_obj_set_style_text_font(chev, FONT_BODY, 0);
+        lv_obj_set_style_text_color(chev, theme::TEXT_SECONDARY, 0);
+        lv_label_set_text(chev, LV_SYMBOL_RIGHT);
+
+        lv_obj_add_event_cb(row, [](lv_event_t* e) {
+            UIManager::instance().showScreen(Screen::USB_SETUP);
         }, LV_EVENT_CLICKED, nullptr);
     }
 
