@@ -22,6 +22,7 @@
 #include "companion/CompanionService.h"
 #include <helpers/esp32/SerialWifiInterface.h>
 #include <helpers/ArduinoSerialInterface.h>
+#include <helpers/esp32/SerialBLEInterface.h>
 #ifdef PLATFORM_TWATCH
 #include <Wire.h>
 #include "hal/twatch/Expander.h"
@@ -39,6 +40,9 @@ static SerialWifiInterface g_companionWifi;
 static bool g_companionWifiServerStarted = false;
 static ArduinoSerialInterface g_companionUsb;
 static bool g_companionUsbStarted = false;
+static SerialBLEInterface g_companionBle;
+static bool g_companionBleStarted = false;
+static char g_bleName[24];   // mutable name buffer for SerialBLEInterface::begin
 
 // Forward declarations
 static void setupMeshCallbacks();
@@ -278,6 +282,27 @@ static void updateCompanion() {
         if (!g_companionUsbStarted) { g_companionUsb.begin(Serial); g_companionUsbStarted = true; }
         desired = &g_companionUsb;
         usbActive = true;
+    } else if (comp.bleCompanionEnabled()) {
+        if (!g_companionBleStarted) {
+            // BLE + WiFi can't share the radio/RAM. Fully tear WiFi down and give
+            // the driver time to actually release its memory before BLEDevice::init
+            // — otherwise the two stacks race and crash. One-time blocking pause,
+            // only on the first BLE enable.
+            WiFiManager::instance().disconnect();
+            delay(600);
+            uint32_t pin = comp.ensureBlePin();
+            const String& dn = ConfigManager::instance().config().deviceName;
+            strncpy(g_bleName, dn.c_str(), sizeof(g_bleName) - 1);
+            g_bleName[sizeof(g_bleName) - 1] = 0;
+            // BLEDevice::init is heavy + one-shot — call begin() once per boot,
+            // then just toggle advertising via enable()/disable().
+            g_companionBle.begin("MeshCore-", g_bleName, pin);
+            g_companionBleStarted = true;
+            comp.setBleInited(true);   // WiFi now blocked until reboot
+            LOGF("[Companion] BLE advertising as MeshCore-%s (PIN %06lu)\n",
+                 g_bleName, (unsigned long)pin);
+        }
+        desired = &g_companionBle;
     } else if (comp.wifiCompanionEnabled() && wifiUp) {
         if (!g_companionWifiServerStarted) {
             g_companionWifi.begin(5000);

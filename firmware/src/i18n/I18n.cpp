@@ -138,6 +138,11 @@ const DefaultString DEFAULT_STRINGS[] = {
     {"usb_companion",            "USB Companion"},
     {"usb_companion_addr",       "Companion: USB"},
     {"usb_companion_hint",       "Bridge the radio to a computer over USB. Serial logs pause while on."},
+    {"ble_companion",            "Bluetooth Companion"},
+    {"ble_companion_pin",        "Pairing PIN: %06lu"},
+    {"ble_companion_advertising","Advertising..."},
+    {"ble_companion_hint",       "Pair from the MeshCore app: pick this device and enter the PIN above."},
+    {"wifi_ble_reboot",          "Reboot to use WiFi (Bluetooth was on)"},
 
     // Telemetry
     {"telem_title",         "Contact Info"},

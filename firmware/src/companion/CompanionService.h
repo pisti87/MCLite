@@ -37,10 +37,23 @@ public:
     // Desired companion state (set by the WiFi screen switches; session-only).
     // main.cpp starts/stops the transport based on these + connectivity. The two
     // are mutually exclusive — one transport + one client at a time.
-    void setWifiCompanionEnabled(bool on) { _wifiWanted = on; if (on) _usbWanted = false; }
+    void setWifiCompanionEnabled(bool on) { _wifiWanted = on; if (on) { _usbWanted = false; _bleWanted = false; } }
     bool wifiCompanionEnabled() const { return _wifiWanted; }
-    void setUsbCompanionEnabled(bool on)  { _usbWanted = on;  if (on) _wifiWanted = false; }
+    void setUsbCompanionEnabled(bool on)  { _usbWanted = on;  if (on) { _wifiWanted = false; _bleWanted = false; } }
     bool usbCompanionEnabled() const { return _usbWanted; }
+    void setBleCompanionEnabled(bool on)  { _bleWanted = on;  if (on) { _wifiWanted = false; _usbWanted = false; } }
+    bool bleCompanionEnabled() const { return _bleWanted; }
+
+    // The BLE pairing PIN — generates + persists a random 6-digit one on first
+    // use (config.json `ble.pin`). Shown on the BLE screen for the phone to enter.
+    uint32_t ensureBlePin();
+
+    // True once the BLE stack has been initialized this power-on. Bluedroid can't
+    // be cleanly torn down at runtime (deinit releases memory permanently), so
+    // WiFi must stay off after BLE has been used — a reboot is required to switch
+    // back to WiFi. main.cpp sets this when it first inits BLE.
+    void setBleInited(bool v) { _bleInited = v; }
+    bool bleInited() const { return _bleInited; }
 
     // ACK bridge (5d.3): MeshManager forwards DM ACK/fail here so the client gets
     // PUSH_CODE_SEND_CONFIRMED and stops re-sending. Safe to call when inactive.
@@ -89,6 +102,8 @@ private:
     uint8_t _appVer = 0;   // protocol version the connected app negotiated
     bool _wifiWanted = false;   // WiFi companion desired (UI switch)
     bool _usbWanted  = false;   // USB companion desired (UI switch)
+    bool _bleWanted  = false;   // BLE companion desired (UI switch)
+    bool _bleInited  = false;   // BLE stack initialized this session (no clean teardown)
 
     // GET_CONTACTS streaming state (single client → single iteration at a time)
     bool     _contactsIterating  = false;

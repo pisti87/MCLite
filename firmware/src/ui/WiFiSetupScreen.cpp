@@ -109,6 +109,17 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
     lv_obj_center(cbl);
     lv_obj_add_flag(_checkBtn, LV_OBJ_FLAG_HIDDEN);
 
+    // Reboot button — shown only when WiFi is locked out by an active BLE stack,
+    // giving a one-tap way to reboot into a clean state where WiFi works.
+    _rebootBtn = lv_btn_create(_screen);
+    lv_obj_set_width(_rebootBtn, theme::CONTENT_WIDTH);
+    lv_obj_set_style_bg_color(_rebootBtn, theme::ACCENT, 0);
+    lv_obj_add_event_cb(_rebootBtn, rebootBtnCb, LV_EVENT_CLICKED, this);
+    lv_obj_t* rbl = lv_label_create(_rebootBtn);
+    lv_label_set_text(rbl, t("reboot_now"));
+    lv_obj_center(rbl);
+    lv_obj_add_flag(_rebootBtn, LV_OBJ_FLAG_HIDDEN);
+
     // Scrollable network list (shown when not connected)
     _list = lv_obj_create(_screen);
     lv_obj_set_size(_list, theme::CONTENT_WIDTH, LV_SIZE_CONTENT);
@@ -163,6 +174,7 @@ void WiFiSetupScreen::hide() {
         lv_group_remove_obj(_switch);
         lv_group_remove_obj(_companionSwitch);
         lv_group_remove_obj(_checkBtn);
+        lv_group_remove_obj(_rebootBtn);
     }
     // Leave WiFi connected if the user turned it on — the status-bar icon reflects it.
     lv_obj_add_flag(_screen, LV_OBJ_FLAG_HIDDEN);
@@ -170,6 +182,23 @@ void WiFiSetupScreen::hide() {
 
 void WiFiSetupScreen::updateStatusUi() {
     auto& wm = WiFiManager::instance();
+
+    // BLE was used this session → WiFi is unavailable until reboot (can't share
+    // the radio/RAM with the BLE stack). Show that and disable the controls.
+    if (CompanionService::instance().bleInited()) {
+        lv_obj_clear_state(_switch, LV_STATE_CHECKED);
+        lv_obj_add_state(_switch, LV_STATE_DISABLED);
+        lv_obj_clear_state(_companionSwitch, LV_STATE_CHECKED);
+        lv_obj_add_state(_companionSwitch, LV_STATE_DISABLED);
+        lv_obj_add_flag(_checkBtn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(_rebootBtn, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(_statusLabel, t("wifi_ble_reboot"));
+        lv_group_t* g = UIManager::instance().inputGroup();
+        if (g) { lv_group_add_obj(g, _rebootBtn); lv_group_add_obj(g, _closeBtn); }
+        return;
+    }
+    lv_obj_add_flag(_rebootBtn, LV_OBJ_FLAG_HIDDEN);
+
     bool connected = wm.isConnected();
     if (connected) {
         lv_obj_add_state(_switch, LV_STATE_CHECKED);
@@ -235,6 +264,13 @@ void WiFiSetupScreen::clearList() {
 
 void WiFiSetupScreen::rebuildList() {
     clearList();
+
+    // Never scan while the BLE stack is up — WiFi.scanNetworks() brings the WiFi
+    // driver online and crashes alongside BLE (shared radio/RAM).
+    if (CompanionService::instance().bleInited()) {
+        updateStatusUi();   // shows the "Reboot to use WiFi" state
+        return;
+    }
 
     lv_label_set_text(_statusLabel, t("wifi_scanning"));
     lv_refr_now(NULL);
@@ -375,6 +411,12 @@ void WiFiSetupScreen::closePasswordEntry() {
 }
 
 void WiFiSetupScreen::doConnect(const String& ssid, const String& password) {
+    // Safety net: never bring WiFi up while the BLE stack is initialized (RAM).
+    if (CompanionService::instance().bleInited()) {
+        UIManager::instance().showToast(t("wifi_ble_reboot"));
+        updateStatusUi();
+        return;
+    }
     lv_label_set_text(_statusLabel, t("wifi_connecting"));
     lv_refr_now(NULL);
 
@@ -446,6 +488,12 @@ void WiFiSetupScreen::switchCb(lv_event_t* e) {
     auto* self = static_cast<WiFiSetupScreen*>(lv_event_get_user_data(e));
     if (!self) return;
     bool on = lv_obj_has_state(self->_switch, LV_STATE_CHECKED);
+    // BLE and WiFi can't coexist; once BLE inited, WiFi needs a reboot.
+    if (on && CompanionService::instance().bleInited()) {
+        lv_obj_clear_state(self->_switch, LV_STATE_CHECKED);
+        UIManager::instance().showToast(t("wifi_ble_reboot"));
+        return;
+    }
     if (on) {
         const auto& cfg = ConfigManager::instance().config();
         if (cfg.wifi.ssid.length() > 0) {
@@ -479,6 +527,10 @@ void WiFiSetupScreen::companionSwitchCb(lv_event_t* e) {
 void WiFiSetupScreen::checkBtnCb(lv_event_t* e) {
     auto* self = static_cast<WiFiSetupScreen*>(lv_event_get_user_data(e));
     if (self) lv_async_call(checkAsyncCb, self);
+}
+
+void WiFiSetupScreen::rebootBtnCb(lv_event_t* e) {
+    ESP.restart();   // clean boot frees the BLE stack so WiFi can run again
 }
 
 void WiFiSetupScreen::rowClickCb(lv_event_t* e) {

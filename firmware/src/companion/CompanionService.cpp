@@ -15,6 +15,7 @@
 #include <MeshCore.h>   // PUB_KEY_SIZE, MAX_PATH_SIZE
 #include <helpers/ContactInfo.h>
 #include <SD.h>
+#include <esp_random.h>
 #include <cstring>
 
 namespace mclite {
@@ -45,6 +46,16 @@ void CompanionService::end() {
     _iface = nullptr;
     _appVer = 0;
     LOGLN("[Companion] interface disabled");
+}
+
+uint32_t CompanionService::ensureBlePin() {
+    auto& cfg = ConfigManager::instance().config();
+    if (cfg.ble.pin < 100000 || cfg.ble.pin > 999999) {
+        cfg.ble.pin = 100000 + (esp_random() % 900000);   // random 6-digit passkey
+        ConfigManager::instance().save();
+        LOGF("[Companion] generated BLE pairing PIN %06lu\n", (unsigned long)cfg.ble.pin);
+    }
+    return cfg.ble.pin;
 }
 
 void CompanionService::loop() {

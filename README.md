@@ -57,7 +57,7 @@ MCLite runs on two LilyGo ESP32-S3 boards. They share the same SX1262 LoRa radio
 - **Offgrid mode** -- one-flag toggle that switches to the community offgrid frequency (433/869/918 MHz, auto-picked from your normal frequency) and relays packets for other offgrid nodes. Camping / hiking / SAR scenarios where no repeaters exist. Toggle on-device from the admin screen or via config tool, reboot to apply. While offgrid, only other offgrid peers receive your messages, SOS, and battery alerts.
 - **Update from SD card** -- drop a firmware `.bin` on the SD card and the device offers to install it on boot (or from the admin screen) -- no USB needed
 - **Update over WiFi** -- optionally connect to WiFi on-device (scan + enter password) and check GitHub for newer firmware; download and install with one tap. Off by default
-- **Companion mode (WiFi / USB)** -- bridge the radio to a phone/desktop/CLI over WiFi or USB using the standard MeshCore companion protocol, *in parallel* with normal on-device use (messages appear in both). Toggle the "WiFi Companion" or "USB Companion" switch on the WiFi screen; works with `meshcore-cli`/`meshcore.js`/`meshcore_py`. One transport at a time; messaging is read-only for config (no remote edits). BLE (mobile apps) is planned. See note below
+- **Companion mode (WiFi / USB / BLE)** -- bridge the radio to a phone/desktop/CLI using the standard MeshCore companion protocol, *in parallel* with normal on-device use (messages appear in both). BLE pairs with the **official MeshCore mobile apps** (6-digit PIN); WiFi/USB work with `meshcore-cli`/`meshcore.js`/`meshcore_py`. One transport at a time; messaging is read-only for config (no remote edits). See note below
 - **Zero-config for end users** -- all settings live in one JSON file on the SD card. Set it up once, copy to every device in your group
 
 ## Getting Started
@@ -105,8 +105,11 @@ meshcore-cli -s /dev/ttyACM0 infos
 ```
 While USB companion is active the device's **serial debug logging is muted** — the binary protocol and log text can't share the one USB port (and there's no spare log UART on these boards). Logs resume the moment you turn it off. The battery icon turns **green** while a USB client is bridging.
 
+**Over Bluetooth (mobile apps):** turn on **Bluetooth Companion** (Admin → Bluetooth). The screen shows a 6-digit **pairing PIN**. In the official MeshCore phone app, scan and pick this device (it advertises as `MeshCore-…`), then enter the PIN when prompted. The phone bonds once and reconnects automatically; the Bluetooth status-bar icon turns **green** while connected. The PIN is generated once and saved.
+
 Notes:
-- **One transport, one client at a time** — WiFi/USB (and future BLE) companion modes are mutually exclusive by design (the protocol is single-session; WiFi+BLE also share the 2.4 GHz radio). Turning one on turns the others off. WiFi and USB are implemented; BLE (for the mobile apps) is planned.
+- **One transport, one client at a time** — WiFi/USB/BLE companion modes are mutually exclusive by design (the protocol is single-session). Turning one on turns the others off.
+- **WiFi vs Bluetooth** — these can't run together (they share the 2.4 GHz radio and there isn't enough RAM for both). Enabling Bluetooth turns WiFi off; once Bluetooth has been used, **switching back to WiFi needs a reboot** (the BLE stack can't be freed at runtime). The WiFi screen shows a reminder when this applies.
 - **Read-only config** — the companion can read contacts/channels and send/receive messages, but cannot change radio settings, contacts, channels, or keys.
 - **No LAN auth** — the WiFi transport has no pairing (the protocol's only auth is BLE pairing). Only enable it on networks you trust. Real auth arrives with the BLE transport.
 - **Known limitation** — messages **typed on the device itself** do not appear in the companion app. The MeshCore companion protocol has no event for a firmware-composed message (it assumes the app is the sole composer). Everything else mirrors both ways: received messages and app-sent messages show on the device and in the app.

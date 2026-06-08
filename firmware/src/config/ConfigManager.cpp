@@ -288,6 +288,8 @@ bool ConfigManager::parseJson(const String& json) {
     _config.wifi.password   = doc["wifi"]["password"]    | "";
     _config.wifi.autoUpdate = doc["wifi"]["auto_update"] | false;
 
+    _config.ble.pin = doc["ble"]["pin"] | 0u;   // 0 = auto-generate on first BLE use
+
     LOGF("[Config] Loaded: device=%s, contacts=%d, channels=%d\n",
                   _config.deviceName.c_str(),
                   _config.contacts.size(),
@@ -408,6 +410,11 @@ String ConfigManager::toJson() const {
         doc["wifi"]["ssid"]        = _config.wifi.ssid;
         doc["wifi"]["password"]    = _config.wifi.password;
         doc["wifi"]["auto_update"] = _config.wifi.autoUpdate;
+    }
+
+    // BLE — emit the persisted pairing PIN once one has been generated.
+    if (_config.ble.pin != 0) {
+        doc["ble"]["pin"] = _config.ble.pin;
     }
 
     String output;

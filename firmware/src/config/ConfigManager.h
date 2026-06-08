@@ -92,6 +92,11 @@ struct WiFiConfig {
     bool   autoUpdate = false;   // Check GitHub for a newer firmware on boot (over WiFi) and prompt
 };
 
+struct BleConfig {
+    uint32_t pin = 0;            // BLE companion pairing passkey. 0 = auto-generate
+                                 // a random 6-digit PIN on first use and persist it.
+};
+
 struct AppConfig {
     String          deviceName;
     String          language;    // "" = English, "de" = German, etc.
@@ -114,6 +119,7 @@ struct AppConfig {
     SecurityConfig  security;
     OffgridConfig   offgrid;
     WiFiConfig      wifi;
+    BleConfig       ble;
 };
 
 class ConfigManager {

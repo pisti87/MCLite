@@ -53,6 +53,7 @@ bool UIManager::init() {
     _heardAdvertsScreen.create(_mainScreen);
     _wifiSetupScreen.create(_mainScreen);
     _usbSetupScreen.create(_mainScreen);
+    _bleSetupScreen.create(_mainScreen);
 
     // Wire up callbacks
     _convoList.onSelect([this](const ConvoId& id) {
@@ -168,6 +169,7 @@ void UIManager::update() {
     _adminScreen.tick();
     _wifiSetupScreen.tick();
     _usbSetupScreen.tick();
+    _bleSetupScreen.tick();
 
     // Room login tick (boot path with backoff). No-op for already-logged-in rooms.
     roomLoginTick();
@@ -241,6 +243,7 @@ void UIManager::showScreen(Screen screen) {
     _heardAdvertsScreen.hide();
     _wifiSetupScreen.hide();
     _usbSetupScreen.hide();
+    _bleSetupScreen.hide();
 
     switch (screen) {
         case Screen::CONVO_LIST:
@@ -261,6 +264,9 @@ void UIManager::showScreen(Screen screen) {
             break;
         case Screen::USB_SETUP:
             _usbSetupScreen.show();
+            break;
+        case Screen::BLE_SETUP:
+            _bleSetupScreen.show();
             break;
     }
     _currentScreen = screen;
@@ -829,6 +835,7 @@ void UIManager::showSetupScreen(SetupReason reason) {
     _heardAdvertsScreen.hide();
     _wifiSetupScreen.hide();
     _usbSetupScreen.hide();
+    _bleSetupScreen.hide();
 
     // Full-screen overlay on top of everything
     lv_obj_t* overlay = lv_obj_create(lv_layer_top());

@@ -8,6 +8,7 @@
 #include "HeardAdvertsScreen.h"
 #include "WiFiSetupScreen.h"
 #include "UsbSetupScreen.h"
+#include "BleSetupScreen.h"
 #include "MapScreen.h"
 #include "../storage/MessageStore.h"
 
@@ -19,7 +20,8 @@ enum class Screen {
     ADMIN,
     HEARD_ADVERTS,
     WIFI_SETUP,
-    USB_SETUP
+    USB_SETUP,
+    BLE_SETUP
 };
 
 class UIManager {
@@ -132,6 +134,7 @@ private:
     HeardAdvertsScreen  _heardAdvertsScreen;
     WiFiSetupScreen     _wifiSetupScreen;
     UsbSetupScreen      _usbSetupScreen;
+    BleSetupScreen      _bleSetupScreen;
 
     lv_obj_t*  _mainScreen = nullptr;
     lv_group_t* _inputGroup = nullptr;

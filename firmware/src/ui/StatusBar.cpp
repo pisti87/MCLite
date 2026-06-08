@@ -86,6 +86,12 @@ void StatusBar::create(lv_obj_t* parent) {
     lv_label_set_text(_wifiIcon, LV_SYMBOL_WIFI);
     lv_obj_add_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
 
+    _bleIcon = lv_label_create(_iconRow);
+    lv_obj_set_style_text_font(_bleIcon, FONT_STATUSBAR_ICON, 0);
+    lv_obj_set_style_text_color(_bleIcon, theme::ACCENT, 0);
+    lv_label_set_text(_bleIcon, LV_SYMBOL_BLUETOOTH);
+    lv_obj_add_flag(_bleIcon, LV_OBJ_FLAG_HIDDEN);
+
     _lblBatt = lv_label_create(_iconRow);
     lv_label_set_recolor(_lblBatt, true);   // recolor the charge bolt independently
     lv_obj_set_style_text_font(_lblBatt, FONT_STATUSBAR_ICON, 0);
@@ -155,6 +161,12 @@ void StatusBar::create(lv_obj_t* parent) {
     lv_obj_set_style_text_color(_wifiIcon, theme::ACCENT, 0);
     lv_label_set_text(_wifiIcon, LV_SYMBOL_WIFI);
     lv_obj_add_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
+
+    _bleIcon = lv_label_create(_bar);
+    lv_obj_set_style_text_font(_bleIcon, FONT_SMALL, 0);
+    lv_obj_set_style_text_color(_bleIcon, theme::ACCENT, 0);
+    lv_label_set_text(_bleIcon, LV_SYMBOL_BLUETOOTH);
+    lv_obj_add_flag(_bleIcon, LV_OBJ_FLAG_HIDDEN);
 
     // Battery
     _lblBatt = lv_label_create(_bar);
@@ -237,6 +249,18 @@ void StatusBar::update() {
             lv_obj_set_style_text_color(_wifiIcon, wifiBridging ? theme::ONLINE_DOT : theme::ACCENT, 0);
         } else {
             lv_obj_add_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    // BLE icon — visible while BLE companion is active (advertising/connected).
+    // Green once a client is connected, blue while just advertising.
+    if (_bleIcon) {
+        if (comp.bleCompanionEnabled()) {
+            lv_obj_clear_flag(_bleIcon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_style_text_color(_bleIcon,
+                comp.clientConnected() ? theme::ONLINE_DOT : theme::ACCENT, 0);
+        } else {
+            lv_obj_add_flag(_bleIcon, LV_OBJ_FLAG_HIDDEN);
         }
     }
 

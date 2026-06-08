@@ -132,6 +132,11 @@
     "usb_companion": "Compagnon USB",
     "usb_companion_addr": "Compagnon: USB",
     "usb_companion_hint": "Relie la radio a un ordinateur via USB. Les logs s'arretent quand actif.",
+    "ble_companion": "Compagnon Bluetooth",
+    "ble_companion_pin": "Code PIN: %06lu",
+    "ble_companion_advertising": "Visible...",
+    "ble_companion_hint": "Coupler depuis l'app MeshCore: choisir cet appareil et entrer le PIN ci-dessus.",
+    "wifi_ble_reboot": "Redemarrer pour le WiFi (Bluetooth etait actif)",
 
     "heard_adverts_title": "Adverts recus",
     "heard_adverts_empty": "Aucun advert recu",
