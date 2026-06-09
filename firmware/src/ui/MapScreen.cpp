@@ -513,19 +513,24 @@ void MapScreen::drawHeardMarkers() {
     for (const auto& m : _markers) {
         int px, py;
         if (!markerScreenPos(m.lat, m.lon, px, py)) continue;
-        bool sel = _hasSel && memcmp(m.key, _selKey, 32) == 0;
-        if (sel) {
-            // Bold white ring + black halo so the selection reads on any tile.
-            drawRing(_cbuf, CANVAS_W, CANVAS_H, px, py, 11, 1, lv_color_black());  // outer halo
-            drawRing(_cbuf, CANVAS_W, CANVAS_H, px, py, 10, 3, lv_color_white());  // bold ring
-            drawRing(_cbuf, CANVAS_W, CANVAS_H, px, py,  7, 1, lv_color_black());  // inner halo
+
+        // Each marker is a filled dot in its type color (blue = a saved contact,
+        // grey = a heard stranger for chat; list colors otherwise) with a black
+        // rim, so the symbol reads against any map tile.
+        lv_color_t dotColor = (m.type == ADV_TYPE_CHAT)
+            ? (m.isContact ? theme::ACCENT : theme::TEXT_SECONDARY)
+            : mapTypeColor(m.type);
+        drawDot(_cbuf, CANVAS_W, CANVAS_H, px, py, 8, dotColor, lv_color_black());
+
+        if (_hasSel && memcmp(m.key, _selKey, 32) == 0) {
+            // Bold white ring + black halos, sitting just outside the dot.
+            drawRing(_cbuf, CANVAS_W, CANVAS_H, px, py, 14, 1, lv_color_black());  // outer halo
+            drawRing(_cbuf, CANVAS_W, CANVAS_H, px, py, 13, 3, lv_color_white());  // bold ring
+            drawRing(_cbuf, CANVAS_W, CANVAS_H, px, py, 10, 1, lv_color_black());  // inner halo
         }
-        // Clients (chat): blue = a saved contact, grey = a heard stranger.
-        // Other types keep their list colors.
-        if (m.type == ADV_TYPE_CHAT)
-            dsc.color = m.isContact ? theme::ACCENT : theme::TEXT_SECONDARY;
-        else
-            dsc.color = mapTypeColor(m.type);
+
+        // Symbol on top, in black or white — whichever contrasts with the dot.
+        dsc.color = (lv_color_brightness(dotColor) > 128) ? lv_color_black() : lv_color_white();
         // Roughly center the single glyph on the coordinate.
         lv_canvas_draw_text(_canvas, px - 5, py - 9, 16, &dsc, mapTypeLetter(m.type));
     }
