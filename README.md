@@ -342,8 +342,28 @@ The T-Deck Plus is keyboard + trackball driven; the T-Watch Ultra is touch drive
 
 | Icon | Meaning |
 |------|---------|
-| GPS | Green = live fix, amber = last known, gray = no fix |
+| GPS | Green = live fix, amber = last known, gray = no fix, dimmed = GPS disabled. **Tap to open the map** |
 | Battery | Charge level; charging symbol when plugged in |
+
+**Map view** (needs offline tiles on the SD card -- see [Map tiles](#map-tiles-optional))
+
+Open it by tapping the **GPS icon** in the status bar (works even when GPS is off -- the icon stays dimmed but tappable), or from a contact's telemetry pop-up via **Map** (which opens the same map centered on that contact, with it highlighted). It's one map either way -- it always shows every node whose location we know: contacts (from a telemetry request or their advert), heard nodes, and your own position.
+
+Markers use the same letters and colors as the Heard Adverts list, drawn as a filled dot with the symbol on top:
+
+| Symbol | Meaning |
+|--------|---------|
+| @ (blue) | Chat client that's a saved contact |
+| @ (grey) | Chat client heard on the mesh (not a contact) |
+| P | Repeater |
+| R | Room server |
+| S | Sensor |
+| Green / amber dot | **Your own** position (green = live fix, amber = last known) -- distinct from node markers |
+
+- **Tap a marker** to show its name in the bottom bar; the selected one gets a ring and a slightly larger dot.
+- **Center** (GPS button) centers on your own location as soon as a fix is available; with no fix it returns to where the map opened (the contact, or a nearby node).
+- **Reload** (↻) re-scans all node locations and re-checks your own, without moving the view.
+- **Drag** to pan, **+ / −** to zoom.
 
 **Message delivery indicators**
 
