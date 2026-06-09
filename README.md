@@ -44,6 +44,8 @@ That's it. Full walkthrough — including updates and companion mode — in [Get
 
 ## Features
 
+*Release history and per-version changes: see [CHANGELOG.md](CHANGELOG.md).*
+
 - **Direct messages** -- private encrypted conversations between contacts
 - **Channels** -- group communication via shared or public channels, with optional read-only (listen-only) mode
 - **Room servers** -- join community message boards run by MeshCore room servers (up to 8). Posts arrive on the conversation list with an `R` icon, ordered alongside DMs and channels by last activity. Auto-login on boot with retry; re-login on chat-open and after 10 minutes of silence to recover from brief radio dropouts.

@@ -5,7 +5,7 @@ All notable changes to MCLite are documented here. The format is loosely based o
 
 Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-watch-vX.Y.Z.bin`).
 
-## [0.3.1] — Unreleased
+## [0.3.1] — 2026-06-09
 
 Fork-adoption batch (features adopted from the jason-s13r/MCLite fork) plus map polish.
 
