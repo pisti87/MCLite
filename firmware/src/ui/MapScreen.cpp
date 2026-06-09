@@ -3,8 +3,15 @@
 #include "UIManager.h"
 #include "theme.h"
 #include "../storage/TileLoader.h"
+#include "../storage/HeardAdvertCache.h"
+#include "../storage/TelemetryCache.h"
+#include "../mesh/MeshManager.h"
+#include "../mesh/MCLiteMesh.h"
 #include "../util/slippy.h"
 #include "../hal/GPS.h"
+#include "../i18n/I18n.h"
+#include <helpers/AdvertDataHelpers.h>   // ADV_TYPE_*
+#include <cstring>
 #ifdef PLATFORM_TDECK
 #include "../input/Keyboard.h"
 #include "../input/Trackball.h"
@@ -32,15 +39,119 @@ static constexpr int MAP_CORNER_INSET = 0;
 #define MAP_BTN_FONT FONT_NORMAL
 #endif
 
+// Marker symbol + color + word per advert type — kept identical to the
+// heard-adverts list (HeardAdvertsScreen.cpp typeIcon()/colors).
+static const char* mapTypeLetter(uint8_t type) {
+    switch (type) {
+        case ADV_TYPE_CHAT:     return "@";
+        case ADV_TYPE_REPEATER: return "P";
+        case ADV_TYPE_ROOM:     return "R";
+        case ADV_TYPE_SENSOR:   return "S";
+        default:                return "?";
+    }
+}
+static lv_color_t mapTypeColor(uint8_t type) {
+    switch (type) {
+        case ADV_TYPE_CHAT:     return theme::ACCENT;
+        case ADV_TYPE_REPEATER: return theme::TEXT_PRIMARY;
+        case ADV_TYPE_ROOM:     return theme::ROOM_ACCENT;
+        case ADV_TYPE_SENSOR:   return theme::OFFGRID_ACCENT;
+        default:                return theme::TEXT_PRIMARY;
+    }
+}
+static const char* mapTypeWord(uint8_t type) {
+    switch (type) {
+        case ADV_TYPE_CHAT:     return t("heard_type_chat");
+        case ADV_TYPE_REPEATER: return t("heard_type_repeater");
+        case ADV_TYPE_ROOM:     return t("heard_type_room");
+        case ADV_TYPE_SENSOR:   return t("heard_type_sensor");
+        default:                return "";
+    }
+}
+
 void MapScreen::open(double contactLat, double contactLon, const String& contactName) {
     if (_screen) return;  // already open
 
+    _general    = false;
     _contactLat = contactLat;
     _contactLon = contactLon;
     _centerLat  = contactLat;
     _centerLon  = contactLon;
     _contactName = contactName;
+    doOpen();
+}
 
+// Collect every node location we know: mesh contacts (fresh telemetry location,
+// else their advert GPS) plus heard-advert entries with GPS, deduped by pubkey.
+void MapScreen::buildMarkers() {
+    _markers.clear();
+    auto seen = [&](const uint8_t* k) {
+        for (auto& m : _markers) if (memcmp(m.key, k, 32) == 0) return true;
+        return false;
+    };
+    auto add = [&](double lat, double lon, uint8_t type, const char* name, const uint8_t* key) {
+        MapMarker m; m.lat = lat; m.lon = lon; m.type = type;
+        strncpy(m.name, name ? name : "", sizeof(m.name) - 1); m.name[sizeof(m.name) - 1] = 0;
+        memcpy(m.key, key, 32);
+        _markers.push_back(m);
+    };
+
+    // 1) Contacts — prefer a fresh telemetry location, else the contact's advert GPS.
+    MCLiteMesh* mesh = MeshManager::instance().mesh();
+    if (mesh) {
+        int n = mesh->getNumContacts();
+        for (int i = 0; i < n; i++) {
+            ContactInfo* c = mesh->getContactByIdx(i);
+            if (!c) continue;
+            const TelemetryData* td = TelemetryCache::instance().get(c->id.pub_key);
+            if (td && td->hasLocation && TelemetryCache::instance().isFresh(c->id.pub_key)) {
+                add(td->lat, td->lon, c->type, c->name, c->id.pub_key);
+            } else if (c->gps_lat || c->gps_lon) {
+                add(c->gps_lat / 1e6, c->gps_lon / 1e6, c->type, c->name, c->id.pub_key);
+            }
+        }
+    }
+
+    // 2) Heard adverts with GPS that aren't already represented by a contact.
+    auto& cache = HeardAdvertCache::instance();
+    const HeardAdvert* es = cache.entries();
+    for (int i = 0; i < cache.count(); i++) {
+        if (!es[i].hasGps || seen(es[i].pubKey)) continue;
+        add(es[i].gpsLat / 1e6, es[i].gpsLon / 1e6, es[i].type, es[i].name, es[i].pubKey);
+    }
+}
+
+bool MapScreen::chooseGeneralCenter(double& lat, double& lon) {
+    auto& gps = GPS::instance();
+    FixStatus fs = gps.fixStatus();
+    if (fs == FixStatus::LIVE)       { lat = gps.lat();       lon = gps.lon();       return true; }
+    if (fs == FixStatus::LAST_KNOWN) { lat = gps.cachedLat(); lon = gps.cachedLon(); return true; }
+    // No own fix → center on the first known node location, if any.
+    buildMarkers();
+    if (_markers.empty()) return false;
+    lat = _markers[0].lat;
+    lon = _markers[0].lon;
+    return true;
+}
+
+void MapScreen::openGeneral() {
+    if (_screen) return;
+    double clat, clon;
+    if (!chooseGeneralCenter(clat, clon)) {
+        UIManager::instance().showToast(t("map_no_locations"));
+        return;
+    }
+    _general     = true;
+    _hasSel      = false;
+    _contactName = "";
+    _contactLat  = clat;   // doubles as the Center-button fallback before an own fix
+    _contactLon  = clon;
+    _centerLat   = clat;
+    _centerLon   = clon;
+    doOpen();
+}
+
+void MapScreen::doOpen() {
     // Snapshot available zooms and pick an initial level before building the
     // canvas — if tiles are unavailable we bail out without allocating.
     _zooms = TileLoader::instance().availableZooms();
@@ -239,6 +350,18 @@ void MapScreen::buildWidgets() {
                   (MAP_CORNER_INSET + theme::PAD_SMALL),
                  -(MAP_CORNER_INSET + theme::PAD_SMALL));
 
+    // Selection label (bottom-centre): shows a tapped node's name in general
+    // mode. Hidden until a marker is tapped; render() never overwrites it.
+    _selLabel = lv_label_create(_screen);
+    lv_obj_set_style_text_font(_selLabel, FONT_BODY, 0);
+    lv_obj_set_style_text_color(_selLabel, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_selLabel, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_bg_opa(_selLabel, LV_OPA_COVER, 0);
+    lv_obj_set_style_pad_all(_selLabel, 4, 0);
+    lv_obj_set_style_radius(_selLabel, 4, 0);
+    lv_obj_align(_selLabel, LV_ALIGN_BOTTOM_MID, 0, -(MAP_CORNER_INSET + theme::PAD_SMALL));
+    lv_obj_add_flag(_selLabel, LV_OBJ_FLAG_HIDDEN);
+
     // Screen-level key handler for Esc / +/- shortcuts (T-Deck keyboard).
     lv_obj_add_event_cb(_screen, &MapScreen::screenKeyCb, LV_EVENT_KEY, this);
 }
@@ -248,14 +371,15 @@ void MapScreen::destroyWidgets() {
         lv_obj_del(_screen);
         _screen = nullptr;
     }
-    _canvas = _closeBtn = _zoomInBtn = _zoomOutBtn = _centerBtn = _infoLabel = nullptr;
+    _canvas = _closeBtn = _zoomInBtn = _zoomOutBtn = _centerBtn = _infoLabel = _selLabel = nullptr;
 }
 
 void MapScreen::render() {
     if (!_canvas || !_cbuf) return;
     renderTiles();
     drawOwnMarker();
-    drawContactMarker();
+    if (_general) { buildMarkers(); drawHeardMarkers(); }
+    else          drawContactMarker();
     drawCrosshair();
     drawScaleBar();
     lv_obj_invalidate(_canvas);
@@ -332,6 +456,46 @@ void MapScreen::drawContactMarker() {
     if (px < -6 || px >= CANVAS_W + 6 || py < -6 || py >= CANVAS_H + 6) return;
     drawDot(_cbuf, CANVAS_W, CANVAS_H, px, py, 5,
             theme::ACCENT, lv_color_white());
+}
+
+bool MapScreen::markerScreenPos(double lat, double lon, int& px, int& py) const {
+    TileFrac fm = latLonToTileXY(lat, lon, _zoom);
+    TileFrac fc = latLonToTileXY(_centerLat, _centerLon, _zoom);
+    px = CANVAS_W / 2 + (int)((fm.x - fc.x) * (double)TILE);
+    py = CANVAS_H / 2 + (int)((fm.y - fc.y) * (double)TILE);
+    return (px >= -8 && px < CANVAS_W + 8 && py >= -8 && py < CANVAS_H + 8);
+}
+
+// ~2px ring at radius r (selection highlight).
+static void drawRing(lv_color_t* buf, int bufW, int bufH, int cx, int cy, int r, lv_color_t c) {
+    const int r0 = (r - 1) * (r - 1), r1 = (r + 1) * (r + 1);
+    for (int dy = -r - 1; dy <= r + 1; dy++) {
+        const int y = cy + dy; if (y < 0 || y >= bufH) continue;
+        for (int dx = -r - 1; dx <= r + 1; dx++) {
+            const int x = cx + dx; if (x < 0 || x >= bufW) continue;
+            const int d2 = dx * dx + dy * dy;
+            if (d2 >= r0 && d2 <= r1) buf[y * bufW + x] = c;
+        }
+    }
+}
+
+void MapScreen::drawHeardMarkers() {
+    lv_draw_label_dsc_t dsc;
+    lv_draw_label_dsc_init(&dsc);
+    dsc.font = FONT_BODY;   // readable on both the T-Deck and the large T-Watch AMOLED
+    for (const auto& m : _markers) {
+        int px, py;
+        if (!markerScreenPos(m.lat, m.lon, px, py)) continue;
+        bool sel = _hasSel && memcmp(m.key, _selKey, 32) == 0;
+        if (sel) {
+            // White ring + black halo so the selection reads on any tile.
+            drawRing(_cbuf, CANVAS_W, CANVAS_H, px, py, 9, lv_color_black());
+            drawRing(_cbuf, CANVAS_W, CANVAS_H, px, py, 8, lv_color_white());
+        }
+        dsc.color = mapTypeColor(m.type);
+        // Roughly center the single glyph on the coordinate.
+        lv_canvas_draw_text(_canvas, px - 5, py - 9, 16, &dsc, mapTypeLetter(m.type));
+    }
 }
 
 void MapScreen::drawOwnMarker() {
@@ -431,9 +595,40 @@ void MapScreen::zoomOutCb(lv_event_t* e) {
 void MapScreen::centerBtnCb(lv_event_t* e) {
     MapScreen* self = static_cast<MapScreen*>(lv_event_get_user_data(e));
     if (!self) return;
-    self->_centerLat = self->_contactLat;
-    self->_centerLon = self->_contactLon;
+    if (self->_general) {
+        // General map: prefer own location once available, else the fallback node.
+        auto& gps = GPS::instance();
+        FixStatus fs = gps.fixStatus();
+        if (fs == FixStatus::LIVE)            { self->_centerLat = gps.lat();       self->_centerLon = gps.lon(); }
+        else if (fs == FixStatus::LAST_KNOWN) { self->_centerLat = gps.cachedLat(); self->_centerLon = gps.cachedLon(); }
+        else                                  { self->_centerLat = self->_contactLat; self->_centerLon = self->_contactLon; }
+    } else {
+        self->_centerLat = self->_contactLat;
+        self->_centerLon = self->_contactLon;
+    }
     self->render();
+}
+
+void MapScreen::hitTestMarker(const lv_point_t& p) {
+    if (!_selLabel) return;
+    int best = -1, bestD2 = 14 * 14;   // tap tolerance (px²)
+    for (size_t i = 0; i < _markers.size(); i++) {
+        int px, py;
+        if (!markerScreenPos(_markers[i].lat, _markers[i].lon, px, py)) continue;
+        int d2 = (p.x - px) * (p.x - px) + (p.y - py) * (p.y - py);
+        if (d2 <= bestD2) { bestD2 = d2; best = (int)i; }
+    }
+    if (best < 0) {
+        _hasSel = false;
+        lv_obj_add_flag(_selLabel, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+    memcpy(_selKey, _markers[best].key, 32);   // highlight this marker with a ring
+    _hasSel = true;
+    String s = String(mapTypeWord(_markers[best].type)) + " " + _markers[best].name;
+    lv_label_set_text(_selLabel, s.c_str());
+    lv_obj_clear_flag(_selLabel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_align(_selLabel, LV_ALIGN_BOTTOM_MID, 0, -(MAP_CORNER_INSET + theme::PAD_SMALL));
 }
 
 void MapScreen::screenKeyCb(lv_event_t* e) {
@@ -463,6 +658,7 @@ void MapScreen::panPressedCb(lv_event_t* e) {
     lv_indev_t* indev = lv_indev_get_act();
     if (!indev) return;
     lv_indev_get_point(indev, &self->_panLast);
+    self->_panStart = self->_panLast;   // remember press point for tap detection
     self->_panActive = true;
 }
 
@@ -507,6 +703,23 @@ void MapScreen::panReleasedCb(lv_event_t* e) {
     MapScreen* self = static_cast<MapScreen*>(lv_event_get_user_data(e));
     if (!self || !self->_panActive) return;
     self->_panActive = false;
+
+    // Tap vs pan: a press that barely moved is a tap. In general mode, a tap
+    // selects the nearest heard marker (name → _selLabel); a pan clears it.
+    if (self->_general) {
+        lv_point_t up = self->_panLast;
+        lv_indev_t* indev = lv_indev_get_act();
+        if (indev) lv_indev_get_point(indev, &up);
+        int mdx = up.x - self->_panStart.x;
+        int mdy = up.y - self->_panStart.y;
+        if (mdx * mdx + mdy * mdy <= 8 * 8) {
+            self->hitTestMarker(up);
+        } else {
+            self->_hasSel = false;                                 // panned → clear selection
+            if (self->_selLabel) lv_obj_add_flag(self->_selLabel, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
     // Commit final position even if throttled away.
     self->render();
 }

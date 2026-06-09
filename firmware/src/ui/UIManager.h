@@ -110,6 +110,9 @@ public:
     // Map screen (opened from telemetry modal)
     void showMapScreen(double lat, double lon, const String& contactName);
 
+    // Open the general map (own location + heard-node markers). From the GPS icon.
+    void showGeneralMap();
+
     // Brief auto-dismissing toast on top layer. Non-modal — doesn't steal
     // focus and disappears after `durationMs` (default 1500ms).
     void showToast(const char* msg, uint32_t durationMs = 1500);
@@ -230,6 +233,7 @@ private:
     double    _pendingMapLon = 0.0;
     String    _pendingMapName;
     static void openMapAsync(void* user);
+    static void openGeneralMapAsync(void* user);
 
     // ─── Room state (decisions #14, #15 from room-server-plan.md) ───
     static constexpr size_t MAX_ROOMS = 8;

@@ -1568,6 +1568,20 @@ void UIManager::showMapScreen(double lat, double lon, const String& contactName)
     _mapScreen.open(lat, lon, contactName);
 }
 
+void UIManager::openGeneralMapAsync(void* user) {
+    UIManager* self = static_cast<UIManager*>(user);
+    if (self) self->_mapScreen.openGeneral();
+}
+
+void UIManager::showGeneralMap() {
+    if (!TileLoader::instance().tilesAvailable()) {
+        showToast(t("map_no_tiles"));
+        return;
+    }
+    // Defer so we're not opening a screen from inside the status-bar tap event.
+    lv_async_call(&UIManager::openGeneralMapAsync, this);
+}
+
 bool UIManager::evalCanMap(const uint8_t* pubKey) const {
     if (!pubKey) return false;
     const TelemetryData* td = TelemetryCache::instance().get(pubKey);

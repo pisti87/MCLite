@@ -143,6 +143,8 @@ const DefaultString DEFAULT_STRINGS[] = {
     {"ble_companion_advertising","Advertising..."},
     {"ble_companion_hint",       "Pair from the MeshCore app: pick this device and enter the PIN above."},
     {"wifi_ble_reboot",          "Reboot to use WiFi (Bluetooth was on)"},
+    {"map_no_tiles",             "No map tiles on SD"},
+    {"map_no_locations",         "No locations yet"},
 
     // Telemetry
     {"telem_title",         "Contact Info"},

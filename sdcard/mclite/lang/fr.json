@@ -137,6 +137,8 @@
     "ble_companion_advertising": "Visible...",
     "ble_companion_hint": "Coupler depuis l'app MeshCore: choisir cet appareil et entrer le PIN ci-dessus.",
     "wifi_ble_reboot": "Redemarrer pour le WiFi (Bluetooth etait actif)",
+    "map_no_tiles": "Pas de tuiles de carte sur SD",
+    "map_no_locations": "Aucune position pour l'instant",
 
     "heard_adverts_title": "Adverts recus",
     "heard_adverts_empty": "Aucun advert recu",

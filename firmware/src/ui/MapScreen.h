@@ -14,8 +14,13 @@ namespace mclite {
 // original lat/lon.
 class MapScreen {
 public:
-    // Open the screen, save the previously-active screen for restore on close.
+    // Open centered on a single contact (telemetry "Map" button).
     void open(double contactLat, double contactLon, const String& contactName);
+
+    // Open the general map: own location + markers for every heard node with GPS.
+    // Centers on own location, else the most-recent heard-with-GPS node. No-ops
+    // (no open) if there's nothing to show — caller should have checked tiles.
+    void openGeneral();
 
     // Close: restores the previous screen, deletes widgets and the canvas
     // buffer. Safe to call when not open.
@@ -25,6 +30,9 @@ public:
 
 private:
     // --- lifecycle ---
+    void doOpen();                 // shared tail of open()/openGeneral()
+    bool chooseGeneralCenter(double& lat, double& lon);  // own GPS, else a known node location
+    void buildMarkers();           // gather known node locations (contacts + heard), deduped
     void buildWidgets();
     void destroyWidgets();
     void pickInitialZoom();
@@ -33,7 +41,11 @@ private:
     void render();
     void renderTiles();
     void drawContactMarker();
+    void drawHeardMarkers();       // general mode: type letters for heard nodes w/ GPS
     void drawOwnMarker();
+    // lat/lon -> canvas pixel; returns false if well off-canvas. Shared by draw + tap.
+    bool markerScreenPos(double lat, double lon, int& px, int& py) const;
+    void hitTestMarker(const lv_point_t& p);  // tap → show nearest node's name in _selLabel
     void drawScaleBar();
     void drawCrosshair();
     void updateZoomButtons();
@@ -59,8 +71,21 @@ private:
     lv_obj_t*   _zoomOutBtn   = nullptr;
     lv_obj_t*   _centerBtn    = nullptr;
     lv_obj_t*   _infoLabel    = nullptr;
+    lv_obj_t*   _selLabel     = nullptr;   // tapped-marker name (general mode), hidden by default
     lv_group_t* _mapGroup     = nullptr;
     lv_group_t* _prevGroup    = nullptr;
+
+    bool        _general      = false;     // true = general map (heard markers), false = single contact
+
+    // Known node locations for the general map (rebuilt each render). Sources:
+    // mesh contacts (fresh telemetry location, else advert GPS) + heard adverts
+    // with GPS, deduped by pubkey.
+    struct MapMarker { double lat; double lon; uint8_t type; char name[32]; uint8_t key[32]; };
+    std::vector<MapMarker> _markers;
+
+    // Tapped marker (highlighted with a ring while its name shows in _selLabel).
+    bool    _hasSel = false;
+    uint8_t _selKey[32] = {0};
 
     // Original contact location — set once in open(), used by drawContactMarker
     // and the Center button. Constant for the lifetime of the screen.
@@ -76,6 +101,7 @@ private:
     // Pan-gesture state.
     bool        _panActive    = false;
     lv_point_t  _panLast{0, 0};
+    lv_point_t  _panStart{0, 0};   // press point, for tap-vs-pan disambiguation
     uint32_t    _lastRenderMs = 0;
 
     std::vector<uint8_t> _zooms;  // snapshot from TileLoader

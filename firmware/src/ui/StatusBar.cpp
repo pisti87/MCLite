@@ -1,5 +1,6 @@
 #include "StatusBar.h"
 #include "theme.h"
+#include "UIManager.h"
 #include "../hal/Battery.h"
 #include "../hal/Display.h"
 #include "../hal/GPS.h"
@@ -79,6 +80,9 @@ void StatusBar::create(lv_obj_t* parent) {
     _gpsIcon = lv_label_create(_iconRow);
     lv_obj_set_style_text_font(_gpsIcon, FONT_STATUSBAR_ICON, 0);
     lv_obj_set_style_text_color(_gpsIcon, theme::TEXT_SECONDARY, 0);
+    lv_obj_add_flag(_gpsIcon, LV_OBJ_FLAG_CLICKABLE);   // tap → general map
+    lv_obj_set_ext_click_area(_gpsIcon, 8);
+    lv_obj_add_event_cb(_gpsIcon, gpsClickCb, LV_EVENT_CLICKED, this);
 
     _wifiIcon = lv_label_create(_iconRow);  // between GPS and battery
     lv_obj_set_style_text_font(_wifiIcon, FONT_STATUSBAR_ICON, 0);
@@ -154,6 +158,9 @@ void StatusBar::create(lv_obj_t* parent) {
     _gpsIcon = lv_label_create(_bar);
     lv_obj_set_style_text_font(_gpsIcon, FONT_SMALL, 0);
     lv_obj_set_style_text_color(_gpsIcon, theme::TEXT_SECONDARY, 0);
+    lv_obj_add_flag(_gpsIcon, LV_OBJ_FLAG_CLICKABLE);   // tap → general map
+    lv_obj_set_ext_click_area(_gpsIcon, 8);
+    lv_obj_add_event_cb(_gpsIcon, gpsClickCb, LV_EVENT_CLICKED, this);
 
     // WiFi indicator (between GPS and battery) — shown only while connected
     _wifiIcon = lv_label_create(_bar);
@@ -188,6 +195,10 @@ void StatusBar::soundClickCb(lv_event_t* e) {
     StatusBar* self = (StatusBar*)lv_event_get_user_data(e);
     Speaker::instance().toggleMute();
     self->updateSoundIcon();
+}
+
+void StatusBar::gpsClickCb(lv_event_t* e) {
+    UIManager::instance().showGeneralMap();
 }
 
 void StatusBar::updateSoundIcon() {

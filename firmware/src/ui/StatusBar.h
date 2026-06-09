@@ -29,6 +29,7 @@ private:
     lv_obj_t* _bleIcon    = nullptr;  // shown only while BLE companion is active
 
     static void soundClickCb(lv_event_t* e);
+    static void gpsClickCb(lv_event_t* e);
 };
 
 }  // namespace mclite
