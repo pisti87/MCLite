@@ -613,6 +613,14 @@ void UIManager::onMessageFailed(uint32_t packetId) {
 }
 
 uint32_t UIManager::handleSend(const ConvoId& id, const String& text) {
+    // Defensive byte-length guard (ChatScreen guards user-typed text first; this
+    // also covers the location-send path). String::length() is the UTF-8 byte
+    // count — over budget would fail in MeshCore and leave a silent FAILED bubble.
+    if (text.length() > defaults::MAX_MSG_BYTES) {
+        showToast(t("msg_too_long"));
+        return 0;
+    }
+
     uint32_t packetId = 0;
     bool isDM   = (id.type == ConvoId::DM);
     bool isRoom = (id.type == ConvoId::ROOM);

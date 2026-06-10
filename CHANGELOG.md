@@ -14,6 +14,9 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
   out for a pop-up you already closed.
 - Muting a chat is now absolute: it silences notifications even for a contact flagged `always_sound`
   (`always_sound` still overrides *global* mute, unchanged).
+- Messages that exceed the 160-**byte** limit (e.g. emoji or accented/non-Latin text — which can be ≤160
+  *characters* but more bytes) are now refused with a "Message too long" toast that keeps your text, instead
+  of silently failing to send while still drawing a (failed) bubble.
 
 ## [0.3.3] — 2026-06-10
 

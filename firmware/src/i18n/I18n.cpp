@@ -41,6 +41,7 @@ const DefaultString DEFAULT_STRINGS[] = {
     // Chat
     {"chat_placeholder",    "Type message..."},
     {"btn_send",            "SEND"},
+    {"msg_too_long",        "Message too long"},
     {"location_title",      "Send Location?"},
     {"btn_cancel",          "Cancel"},
     {"btn_location_send",   "Send"},

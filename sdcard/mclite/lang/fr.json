@@ -28,6 +28,7 @@
 
     "chat_placeholder": "Message...",
     "btn_send": "ENVOYER",
+    "msg_too_long": "Message trop long",
     "location_title": "Envoyer la position?",
     "btn_cancel": "Annuler",
     "btn_location_send": "Envoyer",

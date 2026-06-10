@@ -54,6 +54,10 @@ constexpr bool     REQUEST_TELEMETRY     = true;
 constexpr const char* SHOW_TELEMETRY    = "both";  // "battery", "location", "both", "none"
 constexpr bool     CANNED_MESSAGES_ENABLED = true;
 constexpr bool     ALLOW_MUTE            = false;  // Enable per-chat mute (long-press); off by default
+// Max message text size in BYTES (UTF-8), matching MeshCore MAX_TEXT_LEN (10*16).
+// The chat textarea caps at 160 *characters*, but multi-byte chars (emoji, accents)
+// can exceed this byte budget — validate byte length before sending.
+constexpr uint16_t MAX_MSG_BYTES         = 160;
 
 // Sound
 constexpr bool     SOUND_ENABLED         = true;

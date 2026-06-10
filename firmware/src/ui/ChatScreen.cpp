@@ -5,6 +5,7 @@
 #include "../hal/GPS.h"
 #include "../storage/MessageStore.h"
 #include "../config/ConfigManager.h"
+#include "../config/defaults.h"
 #include "../i18n/I18n.h"
 #include "../util/TimeHelper.h"
 
@@ -259,11 +260,7 @@ void ChatScreen::createInputBar() {
             lv_btnmatrix_set_btn_ctrl_all(self->_kbd, LV_BTNMATRIX_CTRL_NO_REPEAT);
         }
         if (code == LV_EVENT_READY) {
-            const char* text = lv_textarea_get_text(self->_textarea);
-            if (text && strlen(text) > 0 && self->_currentConvo && self->_onSend) {
-                self->_onSend(*self->_currentConvo, String(text));
-                lv_textarea_set_text(self->_textarea, "");
-            }
+            self->trySendCurrent();
             self->hideKeyboard();
         } else if (code == LV_EVENT_CANCEL) {
             self->hideKeyboard();
@@ -623,13 +620,25 @@ void ChatScreen::gpsBtnCb(lv_event_t* e) {
     }, LV_EVENT_VALUE_CHANGED, NULL);
 }
 
+void ChatScreen::trySendCurrent() {
+    if (!_currentConvo || !_onSend) return;
+    const char* text = lv_textarea_get_text(_textarea);
+    if (!text || text[0] == '\0') return;
+    // strlen = UTF-8 byte length (matches MeshCore's strlen() > MAX_TEXT_LEN check).
+    // The textarea caps at 160 *characters*, but emoji/accents are multi-byte, so a
+    // short-looking message can exceed the byte budget and would otherwise fail to
+    // send silently (still drawing a FAILED bubble).
+    if (strlen(text) > defaults::MAX_MSG_BYTES) {
+        UIManager::instance().showToast(t("msg_too_long"));
+        return;  // keep the user's text so they can trim it
+    }
+    _onSend(*_currentConvo, String(text));
+    lv_textarea_set_text(_textarea, "");
+}
+
 void ChatScreen::sendBtnCb(lv_event_t* e) {
     ChatScreen* self = (ChatScreen*)lv_event_get_user_data(e);
-    const char* text = lv_textarea_get_text(self->_textarea);
-    if (text && strlen(text) > 0 && self->_currentConvo && self->_onSend) {
-        self->_onSend(*self->_currentConvo, String(text));
-        lv_textarea_set_text(self->_textarea, "");
-    }
+    self->trySendCurrent();
 #ifdef PLATFORM_TWATCH
     self->hideKeyboard();
 #endif

@@ -28,6 +28,7 @@
 
     "chat_placeholder": "Messaggio...",
     "btn_send": "INVIA",
+    "msg_too_long": "Messaggio troppo lungo",
     "location_title": "Inviare la posizione?",
     "btn_cancel": "Annulla",
     "btn_location_send": "Invia",
