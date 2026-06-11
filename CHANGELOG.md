@@ -7,6 +7,8 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
 
 ## [Unreleased]
 
+## [0.3.4] — 2026-06-11
+
 ### Added
 - **Auto-refresh contact GPS** — keeps the map markers / convo-list badges of contacts who *don't* broadcast
   their own location fresh, by quietly re-requesting telemetry GPS before the cached fix goes stale. Throttled
