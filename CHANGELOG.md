@@ -7,6 +7,8 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
 
 ## [Unreleased]
 
+## [0.3.6] — 2026-06-12
+
 ### Added
 - **Emoji in chat** — received emoji now render inline (a monochrome OpenMoji font with a Montserrat fallback,
   so plain text is unchanged and unknown glyphs degrade gracefully). An on-device **emoji picker**
