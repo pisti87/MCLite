@@ -334,6 +334,7 @@ The T-Deck Plus is keyboard + trackball driven; the T-Watch Ultra is touch drive
 | Contact telemetry | Tap contact name in chat header | Same |
 | Retry failed message | Tap the X on a failed message | Same |
 | Quick reply | Tap the list icon (≡) by the text input | Same |
+| Screenshot (when `debug.screenshots` is on) | Shift + $ | Double-press upper (PWR) button |
 
 **Conversation list icons**
 
