@@ -413,7 +413,7 @@ static void handleKeyShortcuts() {
     }
 
     // Screenshot — global on any screen, gated by debug.screenshots.
-    // Sym+$ on the T-Deck keyboard emits 0x04 (a control code, so it never
+    // Shift+$ on the T-Deck keyboard emits 0x04 (a control code, so it never
     // collides with normal typing).
     if (key == 0x04 && ConfigManager::instance().config().debug.screenshots) {
         Screenshot::capture();

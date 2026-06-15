@@ -428,6 +428,7 @@ void AdminScreen::show() {
     addRow(t("lbl_kbd_backlight"), cfg.display.kbdBacklight
         ? String(t("on")) + " (" + String(cfg.display.kbdBrightness) + ")" : String(t("off")));
     addRow(t("lbl_emoji"), cfg.display.emoji ? t("on") : t("off"));
+    addRow(t("lbl_screenshots"), cfg.debug.screenshots ? t("on") : t("off"));
     if (cfg.display.bootText.length() > 0) {
         addRow(t("lbl_boot_text"), cfg.display.bootText);
     }

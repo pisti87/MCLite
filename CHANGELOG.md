@@ -7,6 +7,8 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
 
 ## [Unreleased]
 
+## [0.3.7] — 2026-06-15
+
 ### Added
 - **Tap a shared location to open it on the map.** When a received (or sent) message contains a GPS position —
   decimal `lat, lon` **or** MGRS/UTMREF — an underlined **"Open in map"** link appears under the bubble; tapping
@@ -15,7 +17,7 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
   position links the decimal. Adds a reverse MGRS→lat/lon parser (`util/mgrs.h`) and a coordinate detector
   (`util/coordparse.h`), both unit-tested.
 - **Screenshot to SD** (debug aid, off by default). With `debug.screenshots` enabled in config, capture the
-  current screen to `/screenshots/*.bmp` (24-bit BMP, opens on any PC) — **T-Deck: Sym+$**; **T-Watch:
+  current screen to `/screenshots/*.bmp` (24-bit BMP, opens on any PC) — **T-Deck: Shift+$**; **T-Watch:
   double-press the side (PEK) button**. Uses LVGL's snapshot into a PSRAM buffer; a toast confirms the save.
   (Overlays on the top layer — toasts/PIN/SOS — aren't captured.)
 
