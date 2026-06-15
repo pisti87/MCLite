@@ -182,6 +182,8 @@
     "wifi_ble_reboot": "Neustart fuer WiFi (Bluetooth war an)",
     "map_no_tiles": "Keine Kartenkacheln auf SD",
     "map_no_locations": "Noch keine Standorte",
+    "map_open": "Auf Karte zeigen",
+    "map_shared_location": "Geteilter Standort",
 
     "heard_adverts_title": "Empfangene Adverts",
     "heard_adverts_empty": "Noch keine Adverts empfangen",

@@ -182,6 +182,8 @@
     "wifi_ble_reboot": "Redemarrer pour le WiFi (Bluetooth etait actif)",
     "map_no_tiles": "Pas de tuiles de carte sur SD",
     "map_no_locations": "Aucune position pour l'instant",
+    "map_open": "Voir sur la carte",
+    "map_shared_location": "Position partagee",
 
     "heard_adverts_title": "Adverts recus",
     "heard_adverts_empty": "Aucun advert recu",

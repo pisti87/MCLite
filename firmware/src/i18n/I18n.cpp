@@ -189,6 +189,8 @@ const DefaultString DEFAULT_STRINGS[] = {
     {"wifi_ble_reboot",          "Reboot to use WiFi (Bluetooth was on)"},
     {"map_no_tiles",             "No map tiles on SD"},
     {"map_no_locations",         "No locations yet"},
+    {"map_open",                 "Open in map"},
+    {"map_shared_location",      "Shared location"},
 
     // Telemetry
     {"telem_title",         "Contact Info"},

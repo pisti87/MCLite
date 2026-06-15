@@ -88,6 +88,7 @@ private:
     static void headerNameCb(lv_event_t* e);
     static void senderNameClickCb(lv_event_t* e);
     static void retryBtnCb(lv_event_t* e);
+    static void mapLinkCb(lv_event_t* e);
     static void cannedBtnCb(lv_event_t* e);
     static void cannedBtnmCb(lv_event_t* e);
     static void emojiBtnCb(lv_event_t* e);

@@ -8,6 +8,8 @@
 #include "../config/defaults.h"
 #include "../mesh/ContactStore.h"
 #include "../util/TextSanitizer.h"
+#include "../util/coordparse.h"
+#include "../storage/TileLoader.h"
 #include "../i18n/I18n.h"
 #include "../util/TimeHelper.h"
 
@@ -15,6 +17,7 @@ namespace mclite {
 
 namespace {
 struct RetryData { String text; uint32_t packetId; };
+struct MapCoord  { double lat; double lon; };
 }  // namespace
 
 void ChatScreen::create(lv_obj_t* parent) {
@@ -457,6 +460,30 @@ void ChatScreen::addBubble(const Message& msg) {
     // normalize typographic quotes to ASCII (Montserrat lacks the glyphs).
     lv_label_set_text(text, sanitizeForDisplay(msg.text).c_str());
 
+    // If the message contains a coordinate (decimal lat/lon or MGRS/UTMREF) and
+    // map tiles are present, add a touch-only underlined "Open in map" link that
+    // centers the map on it. Tile-gated like the telemetry modal's Map button
+    // (UIManager::evalCanMap) — no tiles ⇒ no link. Touch-only: NOT added to the
+    // encoder group (would break trackball nav). One link per message (the parser
+    // returns the first coordinate; a "both"-format message links the decimal).
+    GeoCoord gc = parseFirstGeoCoord(msg.text);
+    if (gc.valid && TileLoader::instance().tilesAvailable()) {
+        lv_obj_t* link = lv_label_create(bubble);
+        lv_obj_set_style_text_font(link, FONT_SMALL, 0);
+        lv_obj_set_style_text_color(link, theme::ACCENT, 0);
+        lv_obj_set_style_text_decor(link, LV_TEXT_DECOR_UNDERLINE, 0);
+        lv_label_set_text(link, t("map_open"));
+        lv_obj_add_flag(link, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_ext_click_area(link, 8);
+
+        auto* mc = new MapCoord{gc.lat, gc.lon};
+        lv_obj_set_user_data(link, mc);
+        lv_obj_add_event_cb(link, mapLinkCb, LV_EVENT_CLICKED, this);
+        lv_obj_add_event_cb(link, [](lv_event_t* e) {
+            delete static_cast<MapCoord*>(lv_obj_get_user_data(lv_event_get_target(e)));
+        }, LV_EVENT_DELETE, nullptr);
+    }
+
     // Bottom line: timestamp + delivery status
     lv_obj_t* meta = lv_obj_create(bubble);
     lv_obj_set_size(meta, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
@@ -713,6 +740,14 @@ void ChatScreen::retryBtnCb(lv_event_t* e) {
     if (!rd) return;
 
     self->_onRetry(*self->_currentConvo, rd->text, rd->packetId);
+}
+
+void ChatScreen::mapLinkCb(lv_event_t* e) {
+    auto* mc = static_cast<MapCoord*>(lv_obj_get_user_data(lv_event_get_target(e)));
+    if (!mc) return;
+    // Open the map centered on the shared coordinate. UIManager defers the screen
+    // change via lv_async_call (a touch cb must not change screens synchronously).
+    UIManager::instance().openMapAt(mc->lat, mc->lon, t("map_shared_location"));
 }
 
 void ChatScreen::cannedBtnCb(lv_event_t* e) {

@@ -61,6 +61,51 @@ void test_mgrs_precision_1() {
     TEST_ASSERT_TRUE(mgrs.indexOf(" ") > 0);
 }
 
+// ---- Reverse parser (mgrsToLatLon) ----
+
+// Round-trip a lat/lon through forward + reverse; must come back within ~tol deg.
+// precision-4 truncates to 10m, so the reverse lands on the cell's SW corner —
+// allow a comfortable margin (~55m).
+static void roundTrip(double lat, double lon) {
+    String s = latLonToMGRS(lat, lon, 4);
+    double rlat = 0, rlon = 0;
+    TEST_ASSERT_TRUE(mgrsToLatLon(s.c_str(), rlat, rlon));
+    TEST_ASSERT_TRUE(fabs(rlat - lat) < 0.0005);
+    TEST_ASSERT_TRUE(fabs(rlon - lon) < 0.0005);
+}
+
+void test_mgrs_reverse_roundtrip_liberty() { roundTrip(40.6892, -74.0445); }
+void test_mgrs_reverse_roundtrip_london()  { roundTrip(51.5033, -0.1195); }
+void test_mgrs_reverse_roundtrip_sydney()  { roundTrip(-33.8688, 151.2093); }
+void test_mgrs_reverse_roundtrip_paris()   { roundTrip(48.8566, 2.3522); }
+void test_mgrs_reverse_roundtrip_equator() { roundTrip(0.0, 0.0); }
+
+void test_mgrs_reverse_literal() {
+    // Forward-encode a known point (Statue of Liberty) then decode the spaced
+    // MGRS string back — truth anchor is the real coordinate, not a hand value.
+    String m = latLonToMGRS(40.6892, -74.0445, 4);
+    double lat = 0, lon = 0;
+    TEST_ASSERT_TRUE(mgrsToLatLon(m.c_str(), lat, lon));
+    TEST_ASSERT_TRUE(fabs(lat - 40.6892) < 0.001);
+    TEST_ASSERT_TRUE(fabs(lon - (-74.0445)) < 0.001);
+}
+
+void test_mgrs_reverse_nospaces() {
+    // Spaced vs compact (no spaces) must decode to the same point.
+    double sLat = 0, sLon = 0, cLat = 0, cLon = 0;
+    TEST_ASSERT_TRUE(mgrsToLatLon("18T WL 8084 0656", sLat, sLon));
+    TEST_ASSERT_TRUE(mgrsToLatLon("18TWL80840656",    cLat, cLon));
+    TEST_ASSERT_TRUE(fabs(sLat - cLat) < 1e-9);
+    TEST_ASSERT_TRUE(fabs(sLon - cLon) < 1e-9);
+}
+
+void test_mgrs_reverse_malformed() {
+    double lat = 0, lon = 0;
+    TEST_ASSERT_FALSE(mgrsToLatLon("not a coord", lat, lon));
+    TEST_ASSERT_FALSE(mgrsToLatLon("18T WL 808", lat, lon));   // odd digit count
+    TEST_ASSERT_FALSE(mgrsToLatLon("", lat, lon));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_mgrs_statue_of_liberty);
@@ -73,5 +118,13 @@ int main() {
     RUN_TEST(test_mgrs_band_letter_equator);
     RUN_TEST(test_mgrs_band_letter_south);
     RUN_TEST(test_mgrs_precision_1);
+    RUN_TEST(test_mgrs_reverse_roundtrip_liberty);
+    RUN_TEST(test_mgrs_reverse_roundtrip_london);
+    RUN_TEST(test_mgrs_reverse_roundtrip_sydney);
+    RUN_TEST(test_mgrs_reverse_roundtrip_paris);
+    RUN_TEST(test_mgrs_reverse_roundtrip_equator);
+    RUN_TEST(test_mgrs_reverse_literal);
+    RUN_TEST(test_mgrs_reverse_nospaces);
+    RUN_TEST(test_mgrs_reverse_malformed);
     return UNITY_END();
 }

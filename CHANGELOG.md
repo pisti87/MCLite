@@ -7,6 +7,14 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
 
 ## [Unreleased]
 
+### Added
+- **Tap a shared location to open it on the map.** When a received (or sent) message contains a GPS position —
+  decimal `lat, lon` **or** MGRS/UTMREF — an underlined **"Open in map"** link appears under the bubble; tapping
+  it opens the map centered there. Touch-only (doesn't touch trackball navigation), and shown only when map
+  tiles are present on SD (same rule as the telemetry Map button). One link per message — a "both"-format
+  position links the decimal. Adds a reverse MGRS→lat/lon parser (`util/mgrs.h`) and a coordinate detector
+  (`util/coordparse.h`), both unit-tested.
+
 ## [0.3.6] — 2026-06-12
 
 ### Added

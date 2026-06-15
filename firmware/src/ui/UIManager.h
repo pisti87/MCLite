@@ -114,6 +114,10 @@ public:
     // Open the general map (own location + heard-node markers). From the GPS icon.
     void showGeneralMap();
 
+    // Open the map centered on an arbitrary coordinate (no contact). Used by the
+    // tap-to-map link on a GPS coordinate in a chat message. Deferred via async.
+    void openMapAt(double lat, double lon, const String& name);
+
     // Brief auto-dismissing toast on top layer. Non-modal — doesn't steal
     // focus and disappears after `durationMs` (default 1500ms).
     void showToast(const char* msg, uint32_t durationMs = 1500);
@@ -234,6 +238,7 @@ private:
     double    _pendingMapLon = 0.0;
     String    _pendingMapName;
     uint8_t   _pendingMapKey[32] = {0};
+    bool      _pendingMapHasKey = false;  // false = center on coord only (no contact marker)
     static void openMapAsync(void* user);
     static void openGeneralMapAsync(void* user);
 

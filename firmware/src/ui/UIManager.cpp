@@ -1610,6 +1610,7 @@ void UIManager::telemBtnCb(lv_event_t* e) {
                     self->_pendingMapLon  = loc.lon;
                     self->_pendingMapName = c->name;
                     memcpy(self->_pendingMapKey, c->publicKey, 32);
+                    self->_pendingMapHasKey = true;
                     self->dismissTelemetryModal();
                     lv_async_call(&UIManager::openMapAsync, self);
                 }
@@ -1622,8 +1623,22 @@ void UIManager::telemBtnCb(lv_event_t* e) {
 void UIManager::openMapAsync(void* user) {
     UIManager* self = static_cast<UIManager*>(user);
     if (!self) return;
-    self->showMapScreen(self->_pendingMapKey, self->_pendingMapLat, self->_pendingMapLon,
+    // A coordinate link (no contact) passes a null key so MapScreen centers on the
+    // point without selecting a contact marker; the telemetry path passes the key.
+    const uint8_t* key = self->_pendingMapHasKey ? self->_pendingMapKey : nullptr;
+    self->showMapScreen(key, self->_pendingMapLat, self->_pendingMapLon,
                         self->_pendingMapName);
+}
+
+void UIManager::openMapAt(double lat, double lon, const String& name) {
+    // Tiles are guaranteed present (the chat link is only rendered when
+    // tilesAvailable()), so just defer the screen change — a touch cb must not
+    // switch screens synchronously (matches the telemetry Map button flow).
+    _pendingMapLat    = lat;
+    _pendingMapLon    = lon;
+    _pendingMapName   = name;
+    _pendingMapHasKey = false;
+    lv_async_call(&UIManager::openMapAsync, this);
 }
 
 void UIManager::showMapScreen(const uint8_t* pubKey, double lat, double lon,
