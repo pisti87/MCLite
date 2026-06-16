@@ -93,6 +93,7 @@ const DefaultString DEFAULT_STRINGS[] = {
     {"searching",           "Searching..."},
     {"gps_fix_status",      "Fix"},
     {"gps_live",            "Live"},
+    {"loc_exact",           "Exact"},
     {"gps_last_known_s",    "Last known (~%ds ago)"},
     {"gps_last_known_m",    "Last known (~%dm ago)"},
     {"gps_last_known_h",    "Last known (~%dh ago)"},

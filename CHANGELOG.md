@@ -5,7 +5,16 @@ All notable changes to MCLite are documented here. The format is loosely based o
 
 Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-watch-vX.Y.Z.bin`).
 
-## [Unreleased]
+## [0.3.8] — 2026-06-16
+
+### Added
+- **Location-advert privacy precision.** The location-advert setting (now `gps.location_precision`) can coarsen
+  the position you broadcast: **Off · Exact · ~100 m · ~750 m · ~3 km · ~12 km · ~50 km** (Meshtastic-style grid
+  snapping, centred in the cell). Only the broadcast advert is coarsened — **telemetry replies to authorized
+  contacts and the in-chat GPS insert always use your exact position**. Default off; old `location_advert:
+  true/false` configs are read automatically (true → exact). Scheme adopted from [@jason-s13r](https://github.com/jason-s13r).
+- **Zero-hop "Local" advert button** on the Heard Adverts screen (alongside the existing flood/mesh-wide one) —
+  announce yourself to immediate neighbours without flooding the whole mesh.
 
 ### Changed
 - **No more periodic flood adverts by default** (issue #13). MCLite previously broadcast a mesh-wide flood
@@ -19,10 +28,6 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
 - **GPS button inserts your location into the message** instead of popping a "Send Location?" confirm. Tapping
   the GPS icon in chat now appends `@ <coords>` to the input so you can add context and send with the normal
   Send button (mirrors the @mention insert; byte-guarded against the 160-byte limit).
-
-### Added
-- **Zero-hop "Local" advert button** on the Heard Adverts screen (alongside the existing flood/mesh-wide one) —
-  announce yourself to immediate neighbours without flooding the whole mesh.
 
 ## [0.3.7] — 2026-06-15
 

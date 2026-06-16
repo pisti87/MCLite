@@ -5,7 +5,7 @@
 // All three are #ifndef-guarded so a fork can override them with -D build flags
 // (e.g. -DMCLITE_REPO_OWNER=\"someone\") to self-update from its own GitHub repo.
 #ifndef MCLITE_VERSION
-#define MCLITE_VERSION "0.3.7"
+#define MCLITE_VERSION "0.3.8"
 #endif
 #ifndef MCLITE_REPO_OWNER
 #define MCLITE_REPO_OWNER "laserir"   // GitHub owner for OTA update checks
@@ -83,7 +83,7 @@ constexpr bool     GPS_ENABLED           = true;
 constexpr int8_t   GPS_CLOCK_OFFSET      = 0;    // UTC offset in hours (-12 to +14) — legacy fallback
 constexpr const char* GPS_TIMEZONE        = "";   // POSIX TZ string (empty = use clock_offset)
 constexpr uint16_t GPS_LAST_KNOWN_MAX_AGE = 1800; // Seconds (30 min) before last-known becomes NO_FIX
-constexpr bool     GPS_LOCATION_ADVERT   = false; // Include own (LIVE/last-known) location in adverts
+constexpr uint8_t  GPS_LOCATION_PRECISION = 0;    // Location-advert precision (0=off, 32=exact, 10-31=coarse)
 
 // Battery
 constexpr bool     BATTERY_LOW_ALERT_ENABLED   = false;

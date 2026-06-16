@@ -19,6 +19,7 @@
 #include "../i18n/I18n.h"
 #include "../util/TimeHelper.h"
 #include "../util/offgrid.h"
+#include "../util/locprecision.h"
 
 namespace mclite {
 
@@ -477,7 +478,22 @@ void AdminScreen::show() {
         }
         addRow(t("gps_coord_format"), cfg.messaging.locationFormat);
         addRow(t("lbl_last_known_max"), String(cfg.gpsLastKnownMaxAge) + "s");
-        addRow(t("lbl_location_advert"), cfg.locationAdvertEnabled ? t("on") : t("off"));
+        {
+            String locVal;
+            if (cfg.locationPrecision == 0)       locVal = t("off");
+            else if (cfg.locationPrecision >= 32) locVal = t("loc_exact");
+            // Friendly labels matching the config tool's precision dropdown.
+            else if (cfg.locationPrecision == 19) locVal = "~100 m";
+            else if (cfg.locationPrecision == 16) locVal = "~750 m";
+            else if (cfg.locationPrecision == 14) locVal = "~3 km";
+            else if (cfg.locationPrecision == 12) locVal = "~12 km";
+            else if (cfg.locationPrecision == 10) locVal = "~50 km";
+            else {  // arbitrary precision set via config.json — compute it
+                uint32_t m = locPrecisionMeters(cfg.locationPrecision);
+                locVal = (m >= 1000) ? ("~" + String(m / 1000) + " km") : ("~" + String(m) + " m");
+            }
+            addRow(t("lbl_location_advert"), locVal);
+        }
         if (cfg.gpsTimezone.length() > 0 && TimeHelper::isValidPosixTz(cfg.gpsTimezone)) {
             // Show abbreviation (chars before first digit/sign) + "(auto-DST)"
             String abbr;

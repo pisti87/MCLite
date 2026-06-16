@@ -66,7 +66,7 @@
     "timezone": "",
     "clock_offset": 0,
     "last_known_max_age": 1800,
-    "location_advert": false
+    "location_precision": 0
   },
   "battery": {
     "low_alert_enabled": false,

@@ -52,7 +52,7 @@ That's it. Full walkthrough — including updates and companion mode — in [Get
 - **Heard adverts** -- browse a rolling 64-entry list of every device your radio has decoded, reachable from the admin screen. Per-row type icon (chat / repeater / room / sensor), hops, last-heard age, GPS when present. Tap a chat advert for the full per-hop path + fingerprint and a one-tap **Save** that adds it to your contact list (queued, applies on next reboot). Manual-advert button announces yourself on demand without waiting for the next periodic cycle
 - **SOS alerts** -- long-press the trackball (hold 6 seconds) to broadcast an emergency alert
 - **Battery alerts** -- automatic low-battery warnings sent to your contacts
-- **GPS location sharing** -- manually send your position in lat/lon or UTMREF/MGRS (military grid) format, used by search and rescue worldwide. Last-known position support when GPS signal is temporarily lost. Optionally **broadcast your location in adverts** (`location_advert`, off by default) so contacts see you on their map -- note adverts are unencrypted and reach everyone in range, unlike targeted per-contact telemetry
+- **GPS location sharing** -- manually send your position in lat/lon or UTMREF/MGRS (military grid) format, used by search and rescue worldwide. Last-known position support when GPS signal is temporarily lost. Optionally **broadcast your location in adverts** (`location_precision`, off by default) so contacts see you on their map -- with a **privacy precision** setting (exact, or coarsened to a ~100 m / ~750 m / ~3 km / ~12 km / ~50 km grid). Note adverts are unencrypted and reach everyone in range; targeted per-contact telemetry replies and the in-chat GPS insert always use your exact position
 - **Telemetry** -- responds to MeshCore-standard telemetry requests (battery, GPS) with per-contact permissions. Compatible with MeshCore companion apps. Optionally request telemetry from contacts to see their battery, location, and distance
 - **Map view** -- visualise positions on a slippy map (optional, requires tile pack on SD card). Tap a contact's name in chat for their position, or tap the **status-bar GPS icon** for the general map: your own location plus markers for every heard node / contact that carries GPS (same chat / repeater / room / sensor symbols as the heard-adverts list). Tap a marker for its name, drag to pan, zoomable, with Center and Reload buttons
 - **Message history** -- conversations saved to SD card and restored on reboot
@@ -283,7 +283,7 @@ To set up a group: use **Fleet Mode** in the Setup Wizard. Add a device for each
     "timezone": "",                    // POSIX TZ string for automatic DST (e.g. "CET-1CEST,M3.5.0/2,M10.5.0/3")
     "clock_offset": 0,                 // UTC offset in hours, no DST (-12 to +14). Ignored if timezone is set
     "last_known_max_age": 1800,        // Seconds before last-known GPS position expires (60-7200)
-    "location_advert": false           // Broadcast your location in adverts so others see you on their map (unencrypted, off by default)
+    "location_precision": 0            // Location in adverts: 0=off (default), 32=exact, or a privacy grid (19≈100m, 16≈750m, 14≈3km, 12≈12km, 10≈50km). Unencrypted; telemetry replies + in-chat GPS stay exact
   },
 
   "battery": {

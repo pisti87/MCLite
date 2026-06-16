@@ -71,6 +71,7 @@
     "searching": "Ricerca...",
     "gps_fix_status": "Fix",
     "gps_live": "Live",
+    "loc_exact": "Esatto",
     "gps_last_known_s": "Ultima (~%ds fa)",
     "gps_last_known_m": "Ultima (~%dm fa)",
     "gps_last_known_h": "Ultima (~%dh fa)",

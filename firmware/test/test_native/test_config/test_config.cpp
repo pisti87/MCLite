@@ -478,6 +478,46 @@ void test_advert_interval_round_trips() {
     TEST_ASSERT_EQUAL_UINT16(720, cfg->config().radio.advertIntervalMin);
 }
 
+// ═══ Location-advert precision ═══
+
+void test_location_precision_defaults_off() {
+    parse("{}");
+    TEST_ASSERT_EQUAL_UINT8(0, cfg->config().locationPrecision);
+}
+
+void test_location_precision_parsed() {
+    parse("{\"gps\":{\"location_precision\": 16}}");
+    TEST_ASSERT_EQUAL_UINT8(16, cfg->config().locationPrecision);
+}
+
+void test_location_precision_clamp_floor() {
+    parse("{\"gps\":{\"location_precision\": 5}}");
+    TEST_ASSERT_EQUAL_UINT8(10, cfg->config().locationPrecision);
+}
+
+void test_location_precision_clamp_cap() {
+    parse("{\"gps\":{\"location_precision\": 40}}");
+    TEST_ASSERT_EQUAL_UINT8(32, cfg->config().locationPrecision);
+}
+
+void test_location_precision_legacy_true() {
+    parse("{\"gps\":{\"location_advert\": true}}");
+    TEST_ASSERT_EQUAL_UINT8(32, cfg->config().locationPrecision);
+}
+
+void test_location_precision_legacy_false() {
+    parse("{\"gps\":{\"location_advert\": false}}");
+    TEST_ASSERT_EQUAL_UINT8(0, cfg->config().locationPrecision);
+}
+
+void test_location_precision_round_trips() {
+    parse("{\"gps\":{\"location_precision\": 16}}");
+    String json = cfg->toJson();
+    cfg->config() = AppConfig{};
+    cfg->parseJson(json);
+    TEST_ASSERT_EQUAL_UINT8(16, cfg->config().locationPrecision);
+}
+
 // ═══ Radio scope ═══
 
 void test_radio_scope_default_wildcard() {
@@ -803,6 +843,13 @@ int main() {
     RUN_TEST(test_advert_interval_floor_one_hour);
     RUN_TEST(test_advert_interval_week_cap);
     RUN_TEST(test_advert_interval_round_trips);
+    RUN_TEST(test_location_precision_defaults_off);
+    RUN_TEST(test_location_precision_parsed);
+    RUN_TEST(test_location_precision_clamp_floor);
+    RUN_TEST(test_location_precision_clamp_cap);
+    RUN_TEST(test_location_precision_legacy_true);
+    RUN_TEST(test_location_precision_legacy_false);
+    RUN_TEST(test_location_precision_round_trips);
 
     // Radio scope
     RUN_TEST(test_radio_scope_default_wildcard);

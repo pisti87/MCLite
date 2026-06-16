@@ -68,6 +68,7 @@
     "searching": "Suche...",
     "gps_fix_status": "Fix",
     "gps_live": "Live",
+    "loc_exact": "Genau",
     "gps_last_known_s": "Zuletzt (~%ds her)",
     "gps_last_known_m": "Zuletzt (~%dm her)",
     "gps_last_known_h": "Zuletzt (~%dh her)",

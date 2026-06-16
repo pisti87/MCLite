@@ -67,7 +67,7 @@ void ConfigManager::applyDefaults() {
     _config.gpsClockOffset = defaults::GPS_CLOCK_OFFSET;
     _config.gpsTimezone    = defaults::GPS_TIMEZONE;
     _config.gpsLastKnownMaxAge = defaults::GPS_LAST_KNOWN_MAX_AGE;
-    _config.locationAdvertEnabled = defaults::GPS_LOCATION_ADVERT;
+    _config.locationPrecision = defaults::GPS_LOCATION_PRECISION;
     _config.battery.lowAlertEnabled   = defaults::BATTERY_LOW_ALERT_ENABLED;
     _config.battery.lowAlertThreshold = defaults::BATTERY_LOW_ALERT_THRESHOLD;
     _config.security.lockMode     = defaults::LOCK_MODE;
@@ -284,7 +284,17 @@ bool ConfigManager::parseJson(const String& json) {
     _config.gpsTimezone = doc["gps"]["timezone"] | defaults::GPS_TIMEZONE;
     uint16_t lastKnownAge = doc["gps"]["last_known_max_age"] | defaults::GPS_LAST_KNOWN_MAX_AGE;
     _config.gpsLastKnownMaxAge = constrain(lastKnownAge, (uint16_t)60, (uint16_t)7200);
-    _config.locationAdvertEnabled = doc["gps"]["location_advert"] | defaults::GPS_LOCATION_ADVERT;
+    // Location-advert precision. Prefer the new key; fall back to the legacy
+    // `location_advert` bool (true → exact / 32, false → off / 0). 0 = off;
+    // otherwise clamp to [10, 32] (never finer than full, never an absurd shift).
+    uint8_t locPrec;
+    if (doc["gps"]["location_precision"].is<int>()) {
+        locPrec = (uint8_t)constrain((int)(doc["gps"]["location_precision"] | 0), 0, 32);
+        if (locPrec != 0 && locPrec < 10) locPrec = 10;
+    } else {
+        locPrec = (doc["gps"]["location_advert"] | false) ? 32 : 0;
+    }
+    _config.locationPrecision = locPrec;
 
     // Battery
     _config.battery.lowAlertEnabled   = doc["battery"]["low_alert_enabled"] | defaults::BATTERY_LOW_ALERT_ENABLED;
@@ -450,7 +460,7 @@ String ConfigManager::toJson() const {
         doc["gps"]["timezone"]       = _config.gpsTimezone;
     }
     doc["gps"]["last_known_max_age"] = _config.gpsLastKnownMaxAge;
-    doc["gps"]["location_advert"]    = _config.locationAdvertEnabled;
+    doc["gps"]["location_precision"] = _config.locationPrecision;
 
     doc["battery"]["low_alert_enabled"]   = _config.battery.lowAlertEnabled;
     doc["battery"]["low_alert_threshold"] = _config.battery.lowAlertThreshold;

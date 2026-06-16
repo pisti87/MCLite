@@ -9,6 +9,7 @@
 #include "../storage/MessageStore.h"
 #include "../util/hex.h"
 #include "../util/offgrid.h"
+#include "../util/locprecision.h"
 #include <helpers/ArduinoHelpers.h>
 #include <helpers/ESP32Board.h>
 #include <helpers/radiolib/CustomSX1262Wrapper.h>
@@ -284,20 +285,27 @@ bool MCLiteMesh::advertise(const char* name, bool flood) {
 
     // Optionally include our own location so we appear on others' maps. Opt-in
     // (default off): adverts are broadcast unencrypted to everyone in range, so
-    // this is distinct from targeted per-contact telemetry. Uses MeshCore's
-    // native advert location field (lat/lon x1e6) at full precision. We only
-    // attach a position that's still acceptable — a LIVE fix, or a last-known
-    // one still within gpsLastKnownMaxAge (fixStatus() returns NO_FIX once it
-    // expires), so we never broadcast a stale location.
+    // this is distinct from targeted per-contact telemetry. `locationPrecision`
+    // controls it: 0 = off, 32 = exact, 10-31 = coarsened to a privacy grid
+    // (obfuscateCoord). We only attach a position that's still acceptable — a
+    // LIVE fix, or a last-known one within gpsLastKnownMaxAge (fixStatus()
+    // returns NO_FIX once it expires) — so we never broadcast a stale location.
+    // NOTE: this coarsening applies ONLY to the broadcast advert; telemetry
+    // responses to authorized contacts and the in-chat GPS insert stay exact.
     mesh::Packet* pkt = nullptr;
-    if (ConfigManager::instance().config().locationAdvertEnabled) {
+    uint8_t locPrec = ConfigManager::instance().config().locationPrecision;
+    if (locPrec > 0) {
         auto& gps = GPS::instance();
         FixStatus fs = gps.fixStatus();
         if (fs == FixStatus::LIVE || fs == FixStatus::LAST_KNOWN) {
             double lat = (fs == FixStatus::LIVE) ? gps.lat() : gps.cachedLat();
             double lon = (fs == FixStatus::LIVE) ? gps.lon() : gps.cachedLon();
+            if (locPrec < 32) {
+                lat = obfuscateCoord(lat, locPrec);
+                lon = obfuscateCoord(lon, locPrec);
+            }
             pkt = createSelfAdvert(name, lat, lon);
-            LOGF("[MCLiteMesh] Advertised as %s (%.5f, %.5f)\n", name, lat, lon);
+            LOGF("[MCLiteMesh] Advertised as %s (%.5f, %.5f, prec=%u)\n", name, lat, lon, locPrec);
         }
     }
     if (!pkt) {                       // disabled or no acceptable fix → name-only
