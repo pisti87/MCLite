@@ -607,56 +607,41 @@ void ChatScreen::updateGpsButtonColor() {
 
 void ChatScreen::gpsBtnCb(lv_event_t* e) {
     ChatScreen* self = (ChatScreen*)lv_event_get_user_data(e);
-    if (!self->_currentConvo || !self->_onSend) return;
+    if (!self->_currentConvo || !self->_textarea) return;
 
-    // Update button color on each click
+    // Update button color on each click (reflects fix status)
     self->updateGpsButtonColor();
 
     auto& gps = GPS::instance();
-    FixStatus status = gps.fixStatus();
-    if (status == FixStatus::NO_FIX) return;
+    if (gps.fixStatus() == FixStatus::NO_FIX) return;
 
-    String locStr = gps.formatLocationWithStatus();
+    // Insert the location into the input so the user can add context and send it
+    // with the normal Send button (mirrors the @mention insert + emoji picker).
+    // Byte-guarded so it can't push the draft past the 160-byte mesh limit.
+    String loc = "@ " + gps.formatLocationWithStatus();
+    String cur = lv_textarea_get_text(self->_textarea);
+    if (cur.length() == 0) self->_lastLocInsert = "";   // fresh draft → allow insert
 
-    static const char* btns[3];
-    btns[0] = t("btn_cancel");
-    btns[1] = t("btn_location_send");
-    btns[2] = "";
-
-    String locTitle = String(LV_SYMBOL_GPS " ") + t("location_title");
-
-    lv_obj_t* msgbox = lv_msgbox_create(NULL,
-        locTitle.c_str(), locStr.c_str(), btns, false);
-    lv_obj_center(msgbox);
-    lv_obj_set_style_bg_color(msgbox, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_text_color(msgbox, theme::TEXT_PRIMARY, 0);
-    lv_obj_set_style_text_font(msgbox, FONT_HEADING, 0);
-
-    // Switch trackball/keyboard to modal group so they can't navigate chat behind
-    lv_obj_t* btnm = lv_msgbox_get_btns(msgbox);
-    if (btnm) UIManager::instance().switchToModalGroup(btnm);
-
-    // Store self pointer on the msgbox for the callback
-    lv_obj_set_user_data(msgbox, self);
-
-    lv_obj_add_event_cb(msgbox, [](lv_event_t* ev) {
-        lv_obj_t* mbox = lv_event_get_current_target(ev);
-        uint16_t btnIdx = lv_msgbox_get_active_btn(mbox);
-        if (btnIdx == LV_BTNMATRIX_BTN_NONE) return;
-
-        ChatScreen* cs = (ChatScreen*)lv_obj_get_user_data(mbox);
-
-        if (btnIdx == 1 && cs && cs->_currentConvo && cs->_onSend) {
-            // "Send" pressed — format location with @ prefix and age qualifier
-            String msg = "@ " + GPS::instance().formatLocationWithStatus();
-            cs->_onSend(*cs->_currentConvo, msg);
+    // No double-insert: skip if the draft still ends with the location we last
+    // appended. Compare against the *stored* insert (not the freshly-formatted
+    // one) — a live fix's coordinates and the age qualifier jitter between taps,
+    // so re-formatting would never match. Typing more text after it breaks the
+    // suffix match, so a later insert still works.
+    if (self->_lastLocInsert.length() == 0 || !cur.endsWith(self->_lastLocInsert)) {
+        String ins = (cur.length() > 0 && !cur.endsWith(" ")) ? (" " + loc) : loc;
+        if ((int)(cur.length() + ins.length()) > defaults::MAX_MSG_BYTES) {
+            UIManager::instance().showToast(t("msg_too_long"));
+            return;
         }
+        lv_textarea_add_text(self->_textarea, ins.c_str());
+        self->_lastLocInsert = loc;
+    }
 
-        // Restore input group before closing modal
-        UIManager::instance().restoreFromModalGroup();
-
-        lv_msgbox_close(mbox);
-    }, LV_EVENT_VALUE_CHANGED, NULL);
+#ifdef PLATFORM_TWATCH
+    self->showKeyboard();                       // on-screen keyboard to edit/send
+#else
+    lv_group_focus_obj(self->_textarea);        // T-Deck: physical keyboard types here
+#endif
 }
 
 void ChatScreen::trySendCurrent() {

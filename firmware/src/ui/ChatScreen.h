@@ -54,6 +54,7 @@ private:
 #endif
 
     std::unique_ptr<ConvoId> _currentConvo;
+    String _lastLocInsert;   // last "@ <coords>" appended via the GPS button (anti-double-insert)
 
     OnSendCallback  _onSend;
     OnBackCallback  _onBack;

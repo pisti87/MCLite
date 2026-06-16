@@ -16,6 +16,9 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
 - **Opt-in periodic advert** — a new `radio.advert_interval_min` config field (config tool → Radio) re-enables
   periodic flood adverts for ad-hoc / SAR / private meshes. **Default 0 = off**; if set, enforced to ≥60 min
   (1-hour floor) — 720 (12 h) recommended, like a repeater.
+- **GPS button inserts your location into the message** instead of popping a "Send Location?" confirm. Tapping
+  the GPS icon in chat now appends `@ <coords>` to the input so you can add context and send with the normal
+  Send button (mirrors the @mention insert; byte-guarded against the 160-byte limit).
 
 ### Added
 - **Zero-hop "Local" advert button** on the Heard Adverts screen (alongside the existing flood/mesh-wide one) —
