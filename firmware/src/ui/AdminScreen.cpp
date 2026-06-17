@@ -749,7 +749,14 @@ void AdminScreen::themeRowCb(lv_event_t* e) {
     for (const auto& ct : cfg.display.customThemes) names.push_back(ct.name);
 
     for (const auto& n : names) labels.push_back(themeDisplayName(n));
-    for (const auto& l : labels) btns.push_back(l.c_str());
+    // Stack one button per row ("\n" = btnmatrix line break) so each is full-width
+    // and legible, instead of cramming them into one narrow row. "\n" entries are
+    // not counted as buttons, so the active-button index still maps to `names`.
+    for (size_t i = 0; i < labels.size(); i++) {
+        if (i > 0) btns.push_back("\n");
+        btns.push_back(labels[i].c_str());
+    }
+    btns.push_back("\n");
     btns.push_back(t("btn_cancel"));
     btns.push_back("");   // LVGL button-array terminator
 
