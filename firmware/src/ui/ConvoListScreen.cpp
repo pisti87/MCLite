@@ -16,7 +16,7 @@ void ConvoListScreen::create(lv_obj_t* parent) {
     lv_obj_set_size(_screen, Display::width(),
                     Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT);
     lv_obj_align(_screen, LV_ALIGN_BOTTOM_MID, 0, -theme::FOOTER_HEIGHT);
-    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(_screen, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_screen, 0, 0);
     lv_obj_set_style_radius(_screen, 0, 0);
@@ -40,12 +40,12 @@ void ConvoListScreen::create(lv_obj_t* parent) {
     // Scrollbar styling — thin, semi-transparent, right edge
     lv_obj_set_style_width(_list, 3, LV_PART_SCROLLBAR);
     lv_obj_set_style_bg_opa(_list, LV_OPA_50, LV_PART_SCROLLBAR);
-    lv_obj_set_style_bg_color(_list, theme::TEXT_SECONDARY, LV_PART_SCROLLBAR);
+    lv_obj_set_style_bg_color(_list, theme::TEXT_SECONDARY(), LV_PART_SCROLLBAR);
 
     // Empty state hint
     _emptyHint = lv_label_create(_screen);
     lv_obj_set_style_text_font(_emptyHint, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(_emptyHint, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(_emptyHint, theme::TEXT_SECONDARY(), 0);
     lv_label_set_text(_emptyHint, t("no_contacts"));
     lv_obj_set_style_text_align(_emptyHint, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(_emptyHint, LV_ALIGN_CENTER, 0, 0);
@@ -112,7 +112,7 @@ void ConvoListScreen::refresh() {
 void ConvoListScreen::addConvoRow(Conversation* convo) {
     lv_obj_t* row = lv_obj_create(_list);
     lv_obj_set_size(row, theme::CONTENT_WIDTH - theme::PAD_SMALL, theme::CONVO_ROW_HEIGHT);
-    lv_obj_set_style_bg_color(row, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_bg_color(row, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(row, 0, 0);
     lv_obj_set_style_radius(row, 4, 0);
@@ -122,7 +122,7 @@ void ConvoListScreen::addConvoRow(Conversation* convo) {
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_COLUMN);
 
     // Highlight on focus
-    lv_obj_set_style_bg_color(row, theme::ACCENT, LV_STATE_FOCUSED);
+    lv_obj_set_style_bg_color(row, theme::ACCENT(), LV_STATE_FOCUSED);
     lv_obj_set_style_bg_opa(row, LV_OPA_40, LV_STATE_FOCUSED);
     lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
 
@@ -163,30 +163,30 @@ void ConvoListScreen::addConvoRow(Conversation* convo) {
     lv_obj_set_style_text_font(icon, FONT_HEADING, 0);
     if (convo->convoId.type == ConvoId::ROOM) {
         lv_label_set_text(icon, ICON_ROOM);
-        lv_obj_set_style_text_color(icon, theme::ROOM_ACCENT, 0);
+        lv_obj_set_style_text_color(icon, theme::ROOM_ACCENT(), 0);
     } else if (convo->convoId.type == ConvoId::DM) {
         lv_label_set_text(icon, ICON_DM);
-        lv_obj_set_style_text_color(icon, theme::ACCENT, 0);
+        lv_obj_set_style_text_color(icon, theme::ACCENT(), 0);
     } else if (convo->isPrivate) {
         lv_label_set_text(icon, ICON_PRIVATE);
-        lv_obj_set_style_text_color(icon, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(icon, theme::TEXT_SECONDARY(), 0);
     } else {
         lv_label_set_text(icon, ICON_CHANNEL);
-        lv_obj_set_style_text_color(icon, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(icon, theme::TEXT_SECONDARY(), 0);
     }
 
     // Unread dot
     if (convo->hasUnread) {
         lv_obj_t* dot = lv_label_create(topLine);
         lv_obj_set_style_text_font(dot, FONT_HEADING, 0);
-        lv_obj_set_style_text_color(dot, theme::UNREAD_DOT, 0);
+        lv_obj_set_style_text_color(dot, theme::UNREAD_DOT(), 0);
         lv_label_set_text(dot, " " LV_SYMBOL_BULLET);
     }
 
     // Name
     lv_obj_t* name = lv_label_create(topLine);
     lv_obj_set_style_text_font(name, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(name, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(name, theme::TEXT_PRIMARY(), 0);
     lv_obj_set_flex_grow(name, 1);
     String nameStr = " " + convo->displayName;
     lv_label_set_text(name, nameStr.c_str());
@@ -207,7 +207,7 @@ void ConvoListScreen::addConvoRow(Conversation* convo) {
                 if (age < 1200000) {
                     lv_obj_t* seenIcon = lv_label_create(topLine);
                     lv_obj_set_style_text_font(seenIcon, FONT_BODY, 0);
-                    lv_obj_set_style_text_color(seenIcon, theme::ONLINE_DOT, 0);
+                    lv_obj_set_style_text_color(seenIcon, theme::ONLINE_DOT(), 0);
                     lv_label_set_text(seenIcon, LV_SYMBOL_EYE_OPEN);
                 }
 
@@ -216,7 +216,7 @@ void ConvoListScreen::addConvoRow(Conversation* convo) {
                 if (seenText.length() > 0) {
                     lv_obj_t* seenLabel = lv_label_create(topLine);
                     lv_obj_set_style_text_font(seenLabel, FONT_BODY, 0);
-                    lv_obj_set_style_text_color(seenLabel, theme::TEXT_TIMESTAMP, 0);
+                    lv_obj_set_style_text_color(seenLabel, theme::TEXT_TIMESTAMP(), 0);
                     lv_label_set_text(seenLabel, seenText.c_str());
                 }
             }
@@ -241,7 +241,7 @@ void ConvoListScreen::addConvoRow(Conversation* convo) {
                     lv_obj_set_style_text_font(battIcon, FONT_BODY, 0);
                     lv_label_set_text(battIcon, battSym);
                     lv_obj_set_style_text_color(battIcon,
-                        pct <= 20 ? theme::BATTERY_LOW : theme::TEXT_PRIMARY, 0);
+                        pct <= 20 ? theme::BATTERY_LOW() : theme::TEXT_PRIMARY(), 0);
                 }
 
                 // GPS icon — shown whenever we know *any* position for the contact
@@ -252,7 +252,7 @@ void ConvoListScreen::addConvoRow(Conversation* convo) {
                     lv_obj_t* locIcon = lv_label_create(topLine);
                     lv_obj_set_style_text_font(locIcon, FONT_BODY, 0);
                     lv_label_set_text(locIcon, LV_SYMBOL_GPS);
-                    lv_obj_set_style_text_color(locIcon, theme::TEXT_PRIMARY, 0);
+                    lv_obj_set_style_text_color(locIcon, theme::TEXT_PRIMARY(), 0);
                 }
             }
 
@@ -276,7 +276,7 @@ void ConvoListScreen::addConvoRow(Conversation* convo) {
         String timeStr = timeBuf;
         lv_obj_t* ts = lv_label_create(topLine);
         lv_obj_set_style_text_font(ts, FONT_BODY, 0);
-        lv_obj_set_style_text_color(ts, theme::TEXT_TIMESTAMP, 0);
+        lv_obj_set_style_text_color(ts, theme::TEXT_TIMESTAMP(), 0);
         lv_label_set_text(ts, timeStr.c_str());
     }
 
@@ -284,7 +284,7 @@ void ConvoListScreen::addConvoRow(Conversation* convo) {
     if (convo->muted && ConfigManager::instance().config().messaging.allowMute) {
         lv_obj_t* muteIcon = lv_label_create(topLine);
         lv_obj_set_style_text_font(muteIcon, FONT_BODY, 0);
-        lv_obj_set_style_text_color(muteIcon, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(muteIcon, theme::TEXT_SECONDARY(), 0);
         lv_label_set_text(muteIcon, LV_SYMBOL_MUTE);
     }
 
@@ -293,7 +293,7 @@ void ConvoListScreen::addConvoRow(Conversation* convo) {
     if (last && last->text.length() > 0) {
         lv_obj_t* preview = lv_label_create(row);
         lv_obj_set_style_text_font(preview, FONT_BODY, 0);
-        lv_obj_set_style_text_color(preview, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(preview, theme::TEXT_SECONDARY(), 0);
         lv_obj_set_width(preview, LV_PCT(100));
         lv_label_set_long_mode(preview, LV_LABEL_LONG_DOT);
 

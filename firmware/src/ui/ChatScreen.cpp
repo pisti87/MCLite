@@ -25,7 +25,7 @@ void ChatScreen::create(lv_obj_t* parent) {
     lv_obj_set_size(_screen, Display::width(),
                     Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT);
     lv_obj_align(_screen, LV_ALIGN_BOTTOM_MID, 0, -theme::FOOTER_HEIGHT);
-    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(_screen, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_screen, 0, 0);
     lv_obj_set_style_radius(_screen, 0, 0);
@@ -61,7 +61,7 @@ void ChatScreen::createHeader() {
     _header = lv_obj_create(_screen);
     lv_obj_set_size(_header, Display::width(), theme::CHAT_HEADER_HEIGHT);
     lv_obj_align(_header, LV_ALIGN_TOP_MID, 0, 0);
-    lv_obj_set_style_bg_color(_header, theme::BG_STATUS_BAR, 0);
+    lv_obj_set_style_bg_color(_header, theme::BG_STATUS_BAR(), 0);
     lv_obj_set_style_bg_opa(_header, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_header, 0, 0);
     lv_obj_set_style_radius(_header, 0, 0);
@@ -83,7 +83,7 @@ void ChatScreen::createHeader() {
     lv_obj_t* backLbl = lv_label_create(backBtn);
     lv_label_set_text(backLbl, LV_SYMBOL_LEFT);
     lv_obj_set_style_text_font(backLbl, FONT_HEADING, 0);  // match the name font for baseline alignment
-    lv_obj_set_style_text_color(backLbl, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(backLbl, theme::ACCENT(), 0);
     lv_obj_center(backLbl);
 
     // Contact/channel name — wrapped in a transparent button for tap detection
@@ -99,7 +99,7 @@ void ChatScreen::createHeader() {
 
     _headerName = lv_label_create(nameBtn);
     lv_obj_set_style_text_font(_headerName, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(_headerName, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_headerName, theme::TEXT_PRIMARY(), 0);
     lv_label_set_text(_headerName, "");
     // Vertically center on the button so the baseline matches the centered
     // back-arrow label next to it (default top-left would sit higher).
@@ -118,7 +118,7 @@ void ChatScreen::createHeader() {
     lv_obj_t* muteLbl = lv_label_create(_muteIcon);
     lv_label_set_text(muteLbl, LV_SYMBOL_MUTE);
     lv_obj_set_style_text_font(muteLbl, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(muteLbl, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(muteLbl, theme::TEXT_SECONDARY(), 0);
     lv_obj_center(muteLbl);
     lv_obj_add_flag(_muteIcon, LV_OBJ_FLAG_HIDDEN);  // shown in open() if muted
 }
@@ -142,7 +142,7 @@ void ChatScreen::createInputBar() {
     _inputBar = lv_obj_create(_screen);
     lv_obj_set_size(_inputBar, Display::width(), theme::CHAT_INPUT_HEIGHT);
     lv_obj_align(_inputBar, LV_ALIGN_BOTTOM_MID, 0, -theme::SAFE_AREA_BOTTOM);
-    lv_obj_set_style_bg_color(_inputBar, theme::BG_INPUT, 0);
+    lv_obj_set_style_bg_color(_inputBar, theme::BG_INPUT(), 0);
     lv_obj_set_style_bg_opa(_inputBar, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_inputBar, 0, 0);
     lv_obj_set_style_radius(_inputBar, 0, 0);
@@ -168,7 +168,7 @@ void ChatScreen::createInputBar() {
         lv_obj_t* cannedLbl = lv_label_create(_cannedBtn);
         lv_label_set_text(cannedLbl, LV_SYMBOL_LIST);
         lv_obj_set_style_text_font(cannedLbl, FONT_HEADING, 0);
-        lv_obj_set_style_text_color(cannedLbl, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(cannedLbl, theme::TEXT_SECONDARY(), 0);
         lv_obj_center(cannedLbl);
     }
 
@@ -200,9 +200,9 @@ void ChatScreen::createInputBar() {
     lv_textarea_set_placeholder_text(_textarea, t("chat_placeholder"));
     lv_obj_set_ext_click_area(_textarea, 8);
     lv_obj_set_style_text_font(_textarea, FONT_BODY, 0);
-    lv_obj_set_style_text_color(_textarea, theme::TEXT_PRIMARY, 0);
-    lv_obj_set_style_bg_color(_textarea, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_border_color(_textarea, theme::ACCENT, LV_STATE_FOCUSED);
+    lv_obj_set_style_text_color(_textarea, theme::TEXT_PRIMARY(), 0);
+    lv_obj_set_style_bg_color(_textarea, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_border_color(_textarea, theme::ACCENT(), LV_STATE_FOCUSED);
     lv_obj_set_style_border_width(_textarea, 1, LV_STATE_FOCUSED);
     lv_obj_add_event_cb(_textarea, textareaCb, LV_EVENT_READY, this);
 
@@ -219,13 +219,13 @@ void ChatScreen::createInputBar() {
     lv_obj_t* gpsLbl = lv_label_create(_gpsBtn);
     lv_label_set_text(gpsLbl, LV_SYMBOL_GPS);
     lv_obj_set_style_text_font(gpsLbl, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(gpsLbl, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(gpsLbl, theme::TEXT_SECONDARY(), 0);
     lv_obj_center(gpsLbl);
 
     // Send button
     _sendBtn = lv_btn_create(_inputBar);
     lv_obj_set_size(_sendBtn, theme::BTN_SEND_W, theme::BTN_SEND_H);
-    lv_obj_set_style_bg_color(_sendBtn, theme::ACCENT, 0);
+    lv_obj_set_style_bg_color(_sendBtn, theme::ACCENT(), 0);
     lv_obj_set_style_radius(_sendBtn, 4, 0);
     lv_obj_set_ext_click_area(_sendBtn, 8);
     lv_obj_add_event_cb(_sendBtn, sendBtnCb, LV_EVENT_CLICKED, this);
@@ -259,8 +259,8 @@ void ChatScreen::createInputBar() {
     // popover above the finger is legible.
     lv_obj_set_style_text_font(_kbd, FONT_BODY, LV_PART_ITEMS);
     lv_obj_set_style_text_font(_kbd, FONT_TITLE, LV_PART_ITEMS | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_color(_kbd, theme::ACCENT, LV_PART_ITEMS | LV_STATE_PRESSED);
-    lv_obj_set_style_text_color(_kbd, lv_color_white(), LV_PART_ITEMS | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_color(_kbd, theme::ACCENT(), LV_PART_ITEMS | LV_STATE_PRESSED);
+    lv_obj_set_style_text_color(_kbd, theme::TEXT_ON_ACCENT(), LV_PART_ITEMS | LV_STATE_PRESSED);
     lv_obj_set_style_radius(_kbd, 4, LV_PART_ITEMS);
     // Tighter inter-key padding → bigger hit area per key. Also strips the
     // keyboard's outer padding so keys at the edge fill all the way out.
@@ -419,10 +419,10 @@ void ChatScreen::addBubble(const Message& msg) {
     lv_obj_set_flex_flow(bubble, LV_FLEX_FLOW_COLUMN);
 
     if (msg.fromSelf) {
-        lv_obj_set_style_bg_color(bubble, theme::BUBBLE_SELF, 0);
+        lv_obj_set_style_bg_color(bubble, theme::BUBBLE_SELF(), 0);
         lv_obj_align(bubble, LV_ALIGN_RIGHT_MID, 0, 0);
     } else {
-        lv_obj_set_style_bg_color(bubble, theme::BUBBLE_THEM, 0);
+        lv_obj_set_style_bg_color(bubble, theme::BUBBLE_THEM(), 0);
         lv_obj_align(bubble, LV_ALIGN_LEFT_MID, 0, 0);
     }
     lv_obj_set_style_bg_opa(bubble, LV_OPA_COVER, 0);
@@ -433,7 +433,7 @@ void ChatScreen::addBubble(const Message& msg) {
          _currentConvo->type == ConvoId::ROOM)) {
         lv_obj_t* sender = lv_label_create(bubble);
         lv_obj_set_style_text_font(sender, FONT_BODY, 0);
-        lv_obj_set_style_text_color(sender, theme::ACCENT, 0);
+        lv_obj_set_style_text_color(sender, theme::ACCENT(), 0);
         lv_label_set_text(sender, msg.senderName.c_str());
         // Tap the name → prepend "@name " into the input (reply mention). The name
         // String is owned by the label and freed on delete; `this` rides the cb.
@@ -446,10 +446,12 @@ void ChatScreen::addBubble(const Message& msg) {
         }, LV_EVENT_DELETE, nullptr);
     }
 
-    // Message text
+    // Message text. Self-bubble text uses a dedicated token so it stays legible
+    // on the (themed) self-bubble color; them-bubble text uses the primary color.
     lv_obj_t* text = lv_label_create(bubble);
     lv_obj_set_style_text_font(text, FONT_BODY, 0);
-    lv_obj_set_style_text_color(text, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(text,
+        msg.fromSelf ? theme::BUBBLE_SELF_TEXT() : theme::TEXT_PRIMARY(), 0);
     lv_label_set_long_mode(text, LV_LABEL_LONG_WRAP);
     if (needsWrap) {
         lv_obj_set_width(text, maxTextW);
@@ -470,7 +472,7 @@ void ChatScreen::addBubble(const Message& msg) {
     if (gc.valid && TileLoader::instance().tilesAvailable()) {
         lv_obj_t* link = lv_label_create(bubble);
         lv_obj_set_style_text_font(link, FONT_SMALL, 0);
-        lv_obj_set_style_text_color(link, theme::ACCENT, 0);
+        lv_obj_set_style_text_color(link, theme::ACCENT(), 0);
         lv_obj_set_style_text_decor(link, LV_TEXT_DECOR_UNDERLINE, 0);
         lv_label_set_text(link, t("map_open"));
         lv_obj_add_flag(link, LV_OBJ_FLAG_CLICKABLE);
@@ -499,7 +501,7 @@ void ChatScreen::addBubble(const Message& msg) {
         lv_obj_t* ts = lv_label_create(meta);
         lv_obj_set_style_text_font(ts, FONT_BODY, 0);
         lv_obj_set_style_text_color(ts,
-            msg.fromSelf ? theme::BUBBLE_SELF_META : theme::TEXT_TIMESTAMP, 0);
+            msg.fromSelf ? theme::BUBBLE_SELF_META() : theme::TEXT_TIMESTAMP(), 0);
         char timeStr[8];
         TimeHelper::instance().formatHHMM(msg.timestamp, timeStr, sizeof(timeStr));
         lv_label_set_text(ts, timeStr);
@@ -512,19 +514,19 @@ void ChatScreen::addBubble(const Message& msg) {
         switch (msg.status) {
             case MessageStatus::SENDING:
                 lv_label_set_text(status, "...");
-                lv_obj_set_style_text_color(status, theme::BUBBLE_SELF_META, 0);
+                lv_obj_set_style_text_color(status, theme::BUBBLE_SELF_META(), 0);
                 break;
             case MessageStatus::SENT:
                 lv_label_set_text(status, LV_SYMBOL_OK);
-                lv_obj_set_style_text_color(status, theme::BUBBLE_SELF_META, 0);
+                lv_obj_set_style_text_color(status, theme::BUBBLE_SELF_META(), 0);
                 break;
             case MessageStatus::DELIVERED:
                 lv_label_set_text(status, LV_SYMBOL_OK LV_SYMBOL_OK);
-                lv_obj_set_style_text_color(status, theme::ACCENT, 0);
+                lv_obj_set_style_text_color(status, theme::ACCENT(), 0);
                 break;
             case MessageStatus::FAILED: {
                 lv_label_set_text(status, LV_SYMBOL_CLOSE);
-                lv_obj_set_style_text_color(status, theme::BATTERY_LOW, 0);
+                lv_obj_set_style_text_color(status, theme::BATTERY_LOW(), 0);
                 lv_obj_add_flag(status, LV_OBJ_FLAG_CLICKABLE);
                 lv_obj_set_ext_click_area(status, 15);
 
@@ -594,13 +596,13 @@ void ChatScreen::updateGpsButtonColor() {
     if (!lbl) return;
     switch (GPS::instance().fixStatus()) {
         case FixStatus::LIVE:
-            lv_obj_set_style_text_color(lbl, theme::ACCENT, 0);
+            lv_obj_set_style_text_color(lbl, theme::ACCENT(), 0);
             break;
         case FixStatus::LAST_KNOWN:
-            lv_obj_set_style_text_color(lbl, theme::GPS_LAST_KNOWN, 0);
+            lv_obj_set_style_text_color(lbl, theme::GPS_LAST_KNOWN(), 0);
             break;
         case FixStatus::NO_FIX:
-            lv_obj_set_style_text_color(lbl, theme::TEXT_SECONDARY, 0);
+            lv_obj_set_style_text_color(lbl, theme::TEXT_SECONDARY(), 0);
             break;
     }
 }
@@ -824,7 +826,7 @@ void ChatScreen::showCannedPicker() {
     lv_obj_set_size(_cannedOverlay, Display::width(),
                     Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT);
     lv_obj_set_pos(_cannedOverlay, 0, 0);
-    lv_obj_set_style_bg_color(_cannedOverlay, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(_cannedOverlay, theme::SCRIM(), 0);
     lv_obj_set_style_bg_opa(_cannedOverlay, LV_OPA_50, 0);
     lv_obj_set_style_border_width(_cannedOverlay, 0, 0);
     lv_obj_clear_flag(_cannedOverlay, LV_OBJ_FLAG_SCROLLABLE);
@@ -851,19 +853,19 @@ void ChatScreen::showCannedPicker() {
     lv_obj_set_size(_cannedBtnm, theme::MODAL_TEXT_WIDTH, pickerH);
     lv_obj_align(_cannedBtnm, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_font(_cannedBtnm, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(_cannedBtnm, theme::TEXT_PRIMARY, 0);
-    lv_obj_set_style_bg_color(_cannedBtnm, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_text_color(_cannedBtnm, theme::TEXT_PRIMARY(), 0);
+    lv_obj_set_style_bg_color(_cannedBtnm, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_bg_opa(_cannedBtnm, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(_cannedBtnm, theme::ACCENT, 0);
+    lv_obj_set_style_border_color(_cannedBtnm, theme::ACCENT(), 0);
     lv_obj_set_style_border_width(_cannedBtnm, 1, 0);
     lv_obj_set_style_radius(_cannedBtnm, 8, 0);
     // Button items styling
-    lv_obj_set_style_bg_color(_cannedBtnm, theme::BG_INPUT, LV_PART_ITEMS);
-    lv_obj_set_style_text_color(_cannedBtnm, theme::TEXT_PRIMARY, LV_PART_ITEMS);
+    lv_obj_set_style_bg_color(_cannedBtnm, theme::BG_INPUT(), LV_PART_ITEMS);
+    lv_obj_set_style_text_color(_cannedBtnm, theme::TEXT_PRIMARY(), LV_PART_ITEMS);
     lv_obj_set_style_radius(_cannedBtnm, 4, LV_PART_ITEMS);
     // Focused button highlight
-    lv_obj_set_style_bg_color(_cannedBtnm, theme::ACCENT, LV_PART_ITEMS | LV_STATE_FOCUSED);
-    lv_obj_set_style_text_color(_cannedBtnm, lv_color_white(), LV_PART_ITEMS | LV_STATE_FOCUSED);
+    lv_obj_set_style_bg_color(_cannedBtnm, theme::ACCENT(), LV_PART_ITEMS | LV_STATE_FOCUSED);
+    lv_obj_set_style_text_color(_cannedBtnm, theme::TEXT_ON_ACCENT(), LV_PART_ITEMS | LV_STATE_FOCUSED);
 
     lv_obj_add_event_cb(_cannedBtnm, cannedBtnmCb, LV_EVENT_VALUE_CHANGED, this);
     // ESC key dismisses the picker without selecting
@@ -951,7 +953,7 @@ void ChatScreen::showEmojiPicker() {
     lv_obj_set_size(_emojiOverlay, Display::width(),
                     Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT);
     lv_obj_set_pos(_emojiOverlay, 0, 0);
-    lv_obj_set_style_bg_color(_emojiOverlay, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(_emojiOverlay, theme::SCRIM(), 0);
     lv_obj_set_style_bg_opa(_emojiOverlay, LV_OPA_50, 0);
     lv_obj_set_style_border_width(_emojiOverlay, 0, 0);
     lv_obj_clear_flag(_emojiOverlay, LV_OBJ_FLAG_SCROLLABLE);
@@ -966,17 +968,17 @@ void ChatScreen::showEmojiPicker() {
     lv_obj_set_size(_emojiBtnm, theme::MODAL_TEXT_WIDTH, pickerH);
     lv_obj_align(_emojiBtnm, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_font(_emojiBtnm, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(_emojiBtnm, theme::TEXT_PRIMARY, 0);
-    lv_obj_set_style_bg_color(_emojiBtnm, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_text_color(_emojiBtnm, theme::TEXT_PRIMARY(), 0);
+    lv_obj_set_style_bg_color(_emojiBtnm, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_bg_opa(_emojiBtnm, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(_emojiBtnm, theme::ACCENT, 0);
+    lv_obj_set_style_border_color(_emojiBtnm, theme::ACCENT(), 0);
     lv_obj_set_style_border_width(_emojiBtnm, 1, 0);
     lv_obj_set_style_radius(_emojiBtnm, 8, 0);
-    lv_obj_set_style_bg_color(_emojiBtnm, theme::BG_INPUT, LV_PART_ITEMS);
-    lv_obj_set_style_text_color(_emojiBtnm, theme::TEXT_PRIMARY, LV_PART_ITEMS);
+    lv_obj_set_style_bg_color(_emojiBtnm, theme::BG_INPUT(), LV_PART_ITEMS);
+    lv_obj_set_style_text_color(_emojiBtnm, theme::TEXT_PRIMARY(), LV_PART_ITEMS);
     lv_obj_set_style_radius(_emojiBtnm, 4, LV_PART_ITEMS);
-    lv_obj_set_style_bg_color(_emojiBtnm, theme::ACCENT, LV_PART_ITEMS | LV_STATE_FOCUSED);
-    lv_obj_set_style_text_color(_emojiBtnm, lv_color_white(), LV_PART_ITEMS | LV_STATE_FOCUSED);
+    lv_obj_set_style_bg_color(_emojiBtnm, theme::ACCENT(), LV_PART_ITEMS | LV_STATE_FOCUSED);
+    lv_obj_set_style_text_color(_emojiBtnm, theme::TEXT_ON_ACCENT(), LV_PART_ITEMS | LV_STATE_FOCUSED);
 
     lv_obj_add_event_cb(_emojiBtnm, emojiBtnmCb, LV_EVENT_VALUE_CHANGED, this);
     lv_obj_add_event_cb(_emojiBtnm, [](lv_event_t* ev) {

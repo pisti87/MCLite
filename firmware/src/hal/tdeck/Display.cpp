@@ -130,7 +130,7 @@ static void buildBootLogo(lv_obj_t* parent) {
     constexpr int     kSize    = 64;
     constexpr int     kStroke  = 4;
     constexpr int     kDot     = 10;
-    const lv_color_t  color    = theme::TEXT_PRIMARY;
+    const lv_color_t  color    = theme::TEXT_PRIMARY();
 
     lv_obj_t* logo = lv_obj_create(parent);
     lv_obj_set_size(logo, kSize, kSize);
@@ -188,7 +188,7 @@ static void buildBootLogo(lv_obj_t* parent) {
 void Display::showBootScreen(const char* bootText) {
     // Create a dedicated boot screen
     _bootScreen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(_bootScreen, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_bootScreen, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(_bootScreen, LV_OPA_COVER, 0);
 
     // Container for centered content
@@ -208,19 +208,19 @@ void Display::showBootScreen(const char* bootText) {
     lv_obj_t* title = lv_label_create(container);
     lv_label_set_text(title, "MCLite");
     lv_obj_set_style_text_font(title, FONT_TITLE, 0);
-    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY(), 0);
 
     // Version
     lv_obj_t* version = lv_label_create(container);
     lv_label_set_text_fmt(version, "v%s", MCLITE_VERSION);
     lv_obj_set_style_text_font(version, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(version, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(version, theme::TEXT_SECONDARY(), 0);
     lv_obj_set_style_pad_top(version, 4, 0);
 
     // Boot text label (e.g. team name) — always created, hidden until set
     _bootSubtitle = lv_label_create(container);
     lv_obj_set_style_text_font(_bootSubtitle, FONT_NORMAL, 0);
-    lv_obj_set_style_text_color(_bootSubtitle, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(_bootSubtitle, theme::ACCENT(), 0);
     lv_obj_set_style_pad_top(_bootSubtitle, 12, 0);
     if (bootText && bootText[0] != '\0') {
         lv_label_set_text(_bootSubtitle, bootText);
@@ -232,7 +232,7 @@ void Display::showBootScreen(const char* bootText) {
     _bootStatus = lv_label_create(_bootScreen);
     lv_label_set_text(_bootStatus, "Starting...");
     lv_obj_set_style_text_font(_bootStatus, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_bootStatus, theme::TEXT_TIMESTAMP, 0);
+    lv_obj_set_style_text_color(_bootStatus, theme::TEXT_TIMESTAMP(), 0);
     lv_obj_align(_bootStatus, LV_ALIGN_BOTTOM_MID, 0, -16);
 
     // Load and render

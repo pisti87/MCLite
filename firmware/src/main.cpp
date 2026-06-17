@@ -16,6 +16,7 @@
 #include "storage/MessageStore.h"
 #include "ui/UIManager.h"
 #include "ui/Screenshot.h"
+#include "ui/theme.h"
 #include "i18n/I18n.h"
 #include "storage/TelemetryCache.h"
 #include "util/TimeHelper.h"
@@ -127,6 +128,10 @@ void setup() {
 
     // Load language translations (before UI init)
     I18n::instance().init(cfg.language);
+
+    // Select the color palette from config (before UI init — inline styles bake
+    // the color in at widget-create time, so this must run before any screen).
+    theme::applyThemeFromConfig();
 
     // Show custom boot text if configured (updates existing boot screen label)
     if (cfg.display.bootText.length() > 0) {

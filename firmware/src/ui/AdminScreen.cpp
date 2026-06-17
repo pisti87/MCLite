@@ -28,7 +28,7 @@ void AdminScreen::create(lv_obj_t* parent) {
     lv_obj_set_size(_screen, Display::width(),
                     Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT);
     lv_obj_align(_screen, LV_ALIGN_BOTTOM_MID, 0, -theme::FOOTER_HEIGHT);
-    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(_screen, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_screen, 0, 0);
     lv_obj_set_style_radius(_screen, 0, 0);
@@ -45,7 +45,7 @@ void AdminScreen::create(lv_obj_t* parent) {
 
     // Style the header
     lv_obj_t* header = lv_win_get_header(_screen);
-    lv_obj_set_style_bg_color(header, theme::BG_STATUS_BAR, 0);
+    lv_obj_set_style_bg_color(header, theme::BG_STATUS_BAR(), 0);
     lv_obj_set_style_bg_opa(header, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(header, 0, 0);
     lv_obj_set_style_radius(header, 0, 0);
@@ -61,12 +61,12 @@ void AdminScreen::create(lv_obj_t* parent) {
 
     lv_obj_t* backLbl = lv_obj_get_child(_backBtn, 0);
     lv_obj_set_style_text_font(backLbl, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(backLbl, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(backLbl, theme::ACCENT(), 0);
 
     // Title
     lv_obj_t* title = lv_win_add_title(_screen, t("admin_title"));
     lv_obj_set_style_text_font(title, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY(), 0);
 
     // Content area
     _content = lv_win_get_content(_screen);
@@ -98,7 +98,7 @@ void AdminScreen::show() {
     auto addRow = [this](const char* label, const String& value) {
         lv_obj_t* row = lv_obj_create(_content);
         lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
-        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY, 0);
+        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY(), 0);
         lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(row, 0, 0);
         lv_obj_set_style_radius(row, 4, 0);
@@ -109,12 +109,12 @@ void AdminScreen::show() {
 
         lv_obj_t* lbl = lv_label_create(row);
         lv_obj_set_style_text_font(lbl, FONT_BODY, 0);
-        lv_obj_set_style_text_color(lbl, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(lbl, theme::TEXT_SECONDARY(), 0);
         lv_label_set_text(lbl, label);
 
         lv_obj_t* val = lv_label_create(row);
         lv_obj_set_style_text_font(val, FONT_BODY, 0);
-        lv_obj_set_style_text_color(val, theme::TEXT_PRIMARY, 0);
+        lv_obj_set_style_text_color(val, theme::TEXT_PRIMARY(), 0);
         lv_label_set_text(val, value.c_str());
     };
 
@@ -122,7 +122,7 @@ void AdminScreen::show() {
     auto addSection = [this](const char* title) {
         lv_obj_t* lbl = lv_label_create(_content);
         lv_obj_set_style_text_font(lbl, FONT_HEADING, 0);
-        lv_obj_set_style_text_color(lbl, theme::ACCENT, 0);
+        lv_obj_set_style_text_color(lbl, theme::ACCENT(), 0);
         lv_obj_set_style_pad_top(lbl, theme::PAD_MEDIUM, 0);
         lv_label_set_text(lbl, title);
     };
@@ -133,7 +133,7 @@ void AdminScreen::show() {
     {
         lv_obj_t* row = lv_obj_create(_content);
         lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
-        lv_obj_set_style_bg_color(row, theme::OFFGRID_ACCENT, 0);
+        lv_obj_set_style_bg_color(row, theme::OFFGRID_ACCENT(), 0);
         lv_obj_set_style_bg_opa(row, cfg.offgrid.enabled ? LV_OPA_50 : LV_OPA_20, 0);
         lv_obj_set_style_border_width(row, 0, 0);
         lv_obj_set_style_radius(row, 4, 0);
@@ -145,12 +145,12 @@ void AdminScreen::show() {
 
         lv_obj_t* lbl = lv_label_create(row);
         lv_obj_set_style_text_font(lbl, FONT_BODY, 0);
-        lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY, 0);
+        lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY(), 0);
         lv_label_set_text(lbl, t("lbl_offgrid"));
 
         lv_obj_t* val = lv_label_create(row);
         lv_obj_set_style_text_font(val, FONT_BODY, 0);
-        lv_obj_set_style_text_color(val, theme::TEXT_PRIMARY, 0);
+        lv_obj_set_style_text_color(val, theme::TEXT_PRIMARY(), 0);
         if (cfg.offgrid.enabled) {
             char buf[24];
             snprintf(buf, sizeof(buf), "%s (%d MHz)",
@@ -168,7 +168,7 @@ void AdminScreen::show() {
     {
         lv_obj_t* row = lv_obj_create(_content);
         lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
-        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY, 0);
+        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY(), 0);
         lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(row, 0, 0);
         lv_obj_set_style_radius(row, 4, 0);
@@ -176,13 +176,13 @@ void AdminScreen::show() {
         lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_bg_color(row, theme::ACCENT, LV_STATE_FOCUSED);
+        lv_obj_set_style_bg_color(row, theme::ACCENT(), LV_STATE_FOCUSED);
         lv_obj_set_style_bg_opa(row, LV_OPA_40, LV_STATE_FOCUSED);
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
 
         _heardCountLabel = lv_label_create(row);
         lv_obj_set_style_text_font(_heardCountLabel, FONT_BODY, 0);
-        lv_obj_set_style_text_color(_heardCountLabel, theme::TEXT_PRIMARY, 0);
+        lv_obj_set_style_text_color(_heardCountLabel, theme::TEXT_PRIMARY(), 0);
         char rowBuf[40];
         snprintf(rowBuf, sizeof(rowBuf), "%s (%d)",
                  t("heard_adverts_title"),
@@ -192,7 +192,7 @@ void AdminScreen::show() {
 
         lv_obj_t* chev = lv_label_create(row);
         lv_obj_set_style_text_font(chev, FONT_BODY, 0);
-        lv_obj_set_style_text_color(chev, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(chev, theme::TEXT_SECONDARY(), 0);
         lv_label_set_text(chev, LV_SYMBOL_RIGHT);
 
         lv_obj_add_event_cb(row, [](lv_event_t* e) {
@@ -205,7 +205,7 @@ void AdminScreen::show() {
     {
         lv_obj_t* row = lv_obj_create(_content);
         lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
-        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY, 0);
+        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY(), 0);
         lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(row, 0, 0);
         lv_obj_set_style_radius(row, 4, 0);
@@ -213,13 +213,13 @@ void AdminScreen::show() {
         lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_bg_color(row, theme::ACCENT, LV_STATE_FOCUSED);
+        lv_obj_set_style_bg_color(row, theme::ACCENT(), LV_STATE_FOCUSED);
         lv_obj_set_style_bg_opa(row, LV_OPA_40, LV_STATE_FOCUSED);
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
 
         lv_obj_t* wl = lv_label_create(row);
         lv_obj_set_style_text_font(wl, FONT_BODY, 0);
-        lv_obj_set_style_text_color(wl, theme::TEXT_PRIMARY, 0);
+        lv_obj_set_style_text_color(wl, theme::TEXT_PRIMARY(), 0);
         String wtxt = String(LV_SYMBOL_WIFI " ");
         if (WiFiManager::instance().isConnected()) {
             wtxt += WiFiManager::instance().connectedSsid();          // really connected
@@ -234,7 +234,7 @@ void AdminScreen::show() {
 
         lv_obj_t* chev = lv_label_create(row);
         lv_obj_set_style_text_font(chev, FONT_BODY, 0);
-        lv_obj_set_style_text_color(chev, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(chev, theme::TEXT_SECONDARY(), 0);
         lv_label_set_text(chev, LV_SYMBOL_RIGHT);
 
         lv_obj_add_event_cb(row, [](lv_event_t* e) {
@@ -246,7 +246,7 @@ void AdminScreen::show() {
     {
         lv_obj_t* row = lv_obj_create(_content);
         lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
-        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY, 0);
+        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY(), 0);
         lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(row, 0, 0);
         lv_obj_set_style_radius(row, 4, 0);
@@ -254,20 +254,20 @@ void AdminScreen::show() {
         lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_bg_color(row, theme::ACCENT, LV_STATE_FOCUSED);
+        lv_obj_set_style_bg_color(row, theme::ACCENT(), LV_STATE_FOCUSED);
         lv_obj_set_style_bg_opa(row, LV_OPA_40, LV_STATE_FOCUSED);
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
 
         lv_obj_t* ul = lv_label_create(row);
         lv_obj_set_style_text_font(ul, FONT_BODY, 0);
-        lv_obj_set_style_text_color(ul, theme::TEXT_PRIMARY, 0);
+        lv_obj_set_style_text_color(ul, theme::TEXT_PRIMARY(), 0);
         String utxt = String(LV_SYMBOL_USB " ") + t("usb_companion");
         if (CompanionService::instance().usbCompanionEnabled()) utxt += String(" (") + t("on") + ")";
         lv_label_set_text(ul, utxt.c_str());
 
         lv_obj_t* chev = lv_label_create(row);
         lv_obj_set_style_text_font(chev, FONT_BODY, 0);
-        lv_obj_set_style_text_color(chev, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(chev, theme::TEXT_SECONDARY(), 0);
         lv_label_set_text(chev, LV_SYMBOL_RIGHT);
 
         lv_obj_add_event_cb(row, [](lv_event_t* e) {
@@ -279,7 +279,7 @@ void AdminScreen::show() {
     {
         lv_obj_t* row = lv_obj_create(_content);
         lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
-        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY, 0);
+        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY(), 0);
         lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(row, 0, 0);
         lv_obj_set_style_radius(row, 4, 0);
@@ -287,20 +287,20 @@ void AdminScreen::show() {
         lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_bg_color(row, theme::ACCENT, LV_STATE_FOCUSED);
+        lv_obj_set_style_bg_color(row, theme::ACCENT(), LV_STATE_FOCUSED);
         lv_obj_set_style_bg_opa(row, LV_OPA_40, LV_STATE_FOCUSED);
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
 
         lv_obj_t* bl = lv_label_create(row);
         lv_obj_set_style_text_font(bl, FONT_BODY, 0);
-        lv_obj_set_style_text_color(bl, theme::TEXT_PRIMARY, 0);
+        lv_obj_set_style_text_color(bl, theme::TEXT_PRIMARY(), 0);
         String btxt = String(LV_SYMBOL_BLUETOOTH " ") + t("ble_companion");
         if (CompanionService::instance().bleCompanionEnabled()) btxt += String(" (") + t("on") + ")";
         lv_label_set_text(bl, btxt.c_str());
 
         lv_obj_t* chev = lv_label_create(row);
         lv_obj_set_style_text_font(chev, FONT_BODY, 0);
-        lv_obj_set_style_text_color(chev, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(chev, theme::TEXT_SECONDARY(), 0);
         lv_label_set_text(chev, LV_SYMBOL_RIGHT);
 
         lv_obj_add_event_cb(row, [](lv_event_t* e) {
@@ -536,7 +536,7 @@ void AdminScreen::show() {
     // Expandable 3rd-party licenses
     lv_obj_t* licToggle = lv_label_create(_content);
     lv_obj_set_style_text_font(licToggle, FONT_BODY, 0);
-    lv_obj_set_style_text_color(licToggle, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(licToggle, theme::ACCENT(), 0);
     lv_obj_add_flag(licToggle, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_pad_top(licToggle, theme::PAD_SMALL, 0);
     String licToggleText = String(LV_SYMBOL_RIGHT " ") + t("licenses_toggle");
@@ -594,7 +594,7 @@ void AdminScreen::show() {
 
     lv_obj_t* licLabel = lv_label_create(licContainer);
     lv_obj_set_style_text_font(licLabel, FONT_BODY, 0);
-    lv_obj_set_style_text_color(licLabel, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(licLabel, theme::TEXT_SECONDARY(), 0);
     lv_obj_set_width(licLabel, LV_PCT(100));
     lv_label_set_long_mode(licLabel, LV_LABEL_LONG_WRAP);
     lv_label_set_text_static(licLabel, licenseText);
@@ -618,7 +618,7 @@ void AdminScreen::show() {
     // Footer
     lv_obj_t* footer = lv_label_create(_content);
     lv_obj_set_style_text_font(footer, FONT_BODY, 0);
-    lv_obj_set_style_text_color(footer, theme::TEXT_TIMESTAMP, 0);
+    lv_obj_set_style_text_color(footer, theme::TEXT_TIMESTAMP(), 0);
     lv_obj_set_style_pad_top(footer, theme::PAD_MEDIUM, 0);
     lv_label_set_text(footer, t("admin_footer"));
 
@@ -661,8 +661,8 @@ void AdminScreen::offgridToggleCb(lv_event_t* e) {
 
     lv_obj_t* msgbox = lv_msgbox_create(NULL, title, bodyBuf, btns, false);
     lv_obj_center(msgbox);
-    lv_obj_set_style_bg_color(msgbox, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_text_color(msgbox, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_bg_color(msgbox, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_text_color(msgbox, theme::TEXT_PRIMARY(), 0);
     lv_obj_set_style_text_font(msgbox, FONT_HEADING, 0);
 
     lv_obj_t* btnm = lv_msgbox_get_btns(msgbox);

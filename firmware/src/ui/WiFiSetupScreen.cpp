@@ -18,7 +18,7 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
     lv_obj_set_size(_screen, Display::width(),
                     Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT);
     lv_obj_align(_screen, LV_ALIGN_BOTTOM_MID, 0, -theme::FOOTER_HEIGHT);
-    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(_screen, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_screen, 0, 0);
     lv_obj_set_style_radius(_screen, 0, 0);
@@ -35,7 +35,7 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
 
     // Style the header
     lv_obj_t* header = lv_win_get_header(_screen);
-    lv_obj_set_style_bg_color(header, theme::BG_STATUS_BAR, 0);
+    lv_obj_set_style_bg_color(header, theme::BG_STATUS_BAR(), 0);
     lv_obj_set_style_bg_opa(header, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(header, 0, 0);
     lv_obj_set_style_radius(header, 0, 0);
@@ -51,12 +51,12 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
 
     lv_obj_t* backLbl = lv_obj_get_child(_backBtn, 0);
     lv_obj_set_style_text_font(backLbl, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(backLbl, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(backLbl, theme::ACCENT(), 0);
 
     // Title
     lv_obj_t* title = lv_win_add_title(_screen, t("wifi_setup_title"));
     lv_obj_set_style_text_font(title, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY(), 0);
 
     // Content area
     lv_obj_t* cont = lv_win_get_content(_screen);
@@ -70,7 +70,7 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
     // Control row: WiFi switch + status text
     lv_obj_t* ctl = lv_obj_create(cont);
     lv_obj_set_size(ctl, theme::CONTENT_WIDTH, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(ctl, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_bg_color(ctl, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_radius(ctl, 4, 0);
     lv_obj_set_style_border_width(ctl, 0, 0);
     lv_obj_set_style_pad_all(ctl, theme::PAD_SMALL, 0);
@@ -82,7 +82,7 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
     lv_label_set_long_mode(_statusLabel, LV_LABEL_LONG_DOT);
     lv_obj_set_flex_grow(_statusLabel, 1);
     lv_obj_set_style_text_font(_statusLabel, FONT_BODY, 0);
-    lv_obj_set_style_text_color(_statusLabel, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_statusLabel, theme::TEXT_PRIMARY(), 0);
 
     _switch = lv_switch_create(ctl);
     lv_obj_add_event_cb(_switch, switchCb, LV_EVENT_VALUE_CHANGED, this);
@@ -91,7 +91,7 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
     // exposes the radio to a phone/PC client over the MeshCore companion protocol.
     _companionRow = lv_obj_create(cont);
     lv_obj_set_size(_companionRow, theme::CONTENT_WIDTH, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(_companionRow, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_bg_color(_companionRow, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_radius(_companionRow, 4, 0);
     lv_obj_set_style_border_width(_companionRow, 0, 0);
     lv_obj_set_style_pad_all(_companionRow, theme::PAD_SMALL, 0);
@@ -103,7 +103,7 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
     lv_label_set_long_mode(_companionLabel, LV_LABEL_LONG_DOT);
     lv_obj_set_flex_grow(_companionLabel, 1);
     lv_obj_set_style_text_font(_companionLabel, FONT_BODY, 0);
-    lv_obj_set_style_text_color(_companionLabel, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_companionLabel, theme::TEXT_PRIMARY(), 0);
     lv_label_set_text(_companionLabel, t("wifi_companion"));
 
     _companionSwitch = lv_switch_create(_companionRow);
@@ -112,7 +112,7 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
     // "Check for updates" button (shown only while connected)
     _checkBtn = lv_btn_create(cont);
     lv_obj_set_width(_checkBtn, theme::CONTENT_WIDTH);
-    lv_obj_set_style_bg_color(_checkBtn, theme::ACCENT, 0);
+    lv_obj_set_style_bg_color(_checkBtn, theme::ACCENT(), 0);
     lv_obj_add_event_cb(_checkBtn, checkBtnCb, LV_EVENT_CLICKED, this);
     lv_obj_t* cbl = lv_label_create(_checkBtn);
     lv_label_set_text(cbl, t("wifi_check_updates"));
@@ -123,7 +123,7 @@ void WiFiSetupScreen::create(lv_obj_t* parent) {
     // giving a one-tap way to reboot into a clean state where WiFi works.
     _rebootBtn = lv_btn_create(cont);
     lv_obj_set_width(_rebootBtn, theme::CONTENT_WIDTH);
-    lv_obj_set_style_bg_color(_rebootBtn, theme::ACCENT, 0);
+    lv_obj_set_style_bg_color(_rebootBtn, theme::ACCENT(), 0);
     lv_obj_add_event_cb(_rebootBtn, rebootBtnCb, LV_EVENT_CLICKED, this);
     lv_obj_t* rbl = lv_label_create(_rebootBtn);
     lv_label_set_text(rbl, t("reboot_now"));
@@ -292,14 +292,14 @@ void WiFiSetupScreen::rebuildList() {
     for (int i = 0; i < _netCount; i++) {
         lv_obj_t* row = lv_obj_create(_list);
         lv_obj_set_size(row, theme::CONTENT_WIDTH - theme::PAD_SMALL, LV_SIZE_CONTENT);
-        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY, 0);
+        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY(), 0);
         lv_obj_set_style_radius(row, 4, 0);
         lv_obj_set_style_border_width(row, 0, 0);
         lv_obj_set_style_pad_all(row, theme::PAD_SMALL, 0);
         lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_bg_color(row, theme::ACCENT, LV_STATE_FOCUSED);
+        lv_obj_set_style_bg_color(row, theme::ACCENT(), LV_STATE_FOCUSED);
         lv_obj_set_style_bg_opa(row, LV_OPA_40, LV_STATE_FOCUSED);
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_set_user_data(row, (void*)(intptr_t)i);
@@ -312,14 +312,14 @@ void WiFiSetupScreen::rebuildList() {
         lv_label_set_long_mode(name, LV_LABEL_LONG_DOT);
         lv_obj_set_flex_grow(name, 1);
         lv_obj_set_style_text_font(name, FONT_BODY, 0);
-        lv_obj_set_style_text_color(name, theme::TEXT_PRIMARY, 0);
+        lv_obj_set_style_text_color(name, theme::TEXT_PRIMARY(), 0);
         lv_label_set_text(name, _nets[i].ssid.c_str());
 
         lv_obj_t* meta = lv_label_create(row);
         lv_obj_set_style_text_font(meta, FONT_SMALL, 0);
         const String& savedSsid = ConfigManager::instance().config().wifi.ssid;
         bool saved = savedSsid.length() > 0 && _nets[i].ssid == savedSsid;
-        lv_obj_set_style_text_color(meta, saved ? theme::ACCENT : theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(meta, saved ? theme::ACCENT() : theme::TEXT_SECONDARY(), 0);
         String m;
         if (saved) m += LV_SYMBOL_OK " ";   // credentials already saved for this network
         m += LV_SYMBOL_WIFI;
@@ -338,7 +338,7 @@ void WiFiSetupScreen::openPasswordEntry(const String& ssid) {
     _pwOverlay = lv_obj_create(lv_layer_top());
     lv_obj_set_size(_pwOverlay, Display::width(), Display::height());
     lv_obj_set_pos(_pwOverlay, 0, 0);
-    lv_obj_set_style_bg_color(_pwOverlay, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_pwOverlay, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(_pwOverlay, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_pwOverlay, 0, 0);
     lv_obj_clear_flag(_pwOverlay, LV_OBJ_FLAG_SCROLLABLE);
@@ -348,7 +348,7 @@ void WiFiSetupScreen::openPasswordEntry(const String& ssid) {
     lv_obj_set_width(lbl, theme::CONTENT_WIDTH);
     lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_font(lbl, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY(), 0);
     lv_label_set_text(lbl, ssid.c_str());
     lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, theme::STATUS_BAR_HEIGHT);
 
@@ -359,13 +359,13 @@ void WiFiSetupScreen::openPasswordEntry(const String& ssid) {
     lv_textarea_set_placeholder_text(_pwTextarea, t("wifi_password"));
     lv_obj_set_width(_pwTextarea, theme::CONTENT_WIDTH);
     lv_obj_align(_pwTextarea, LV_ALIGN_TOP_MID, 0, theme::STATUS_BAR_HEIGHT + 44);
-    lv_obj_set_style_border_color(_pwTextarea, theme::ACCENT, LV_STATE_FOCUSED);
+    lv_obj_set_style_border_color(_pwTextarea, theme::ACCENT(), LV_STATE_FOCUSED);
     lv_obj_add_event_cb(_pwTextarea, pwReadyCb, LV_EVENT_READY, this);
 
     // Cancel button (always reachable — not just Esc/keyboard-cancel)
     lv_obj_t* cancel = lv_btn_create(_pwOverlay);
-    lv_obj_set_style_bg_color(cancel, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_bg_color(cancel, theme::ACCENT, LV_STATE_FOCUSED);
+    lv_obj_set_style_bg_color(cancel, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_bg_color(cancel, theme::ACCENT(), LV_STATE_FOCUSED);
     lv_obj_align(cancel, LV_ALIGN_TOP_MID, 0, theme::STATUS_BAR_HEIGHT + 44 + 52);
     lv_obj_add_event_cb(cancel, [](lv_event_t* ev) {
         auto* self = static_cast<WiFiSetupScreen*>(lv_event_get_user_data(ev));

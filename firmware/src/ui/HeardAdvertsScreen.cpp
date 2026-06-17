@@ -31,11 +31,11 @@ const char* typeIcon(uint8_t type) {
 
 lv_color_t typeColor(uint8_t type) {
     switch (type) {
-        case ADV_TYPE_CHAT:     return theme::ACCENT;
-        case ADV_TYPE_REPEATER: return theme::TEXT_PRIMARY;
-        case ADV_TYPE_ROOM:     return theme::ROOM_ACCENT;
-        case ADV_TYPE_SENSOR:   return theme::OFFGRID_ACCENT;
-        default:                return theme::TEXT_TIMESTAMP;
+        case ADV_TYPE_CHAT:     return theme::ACCENT();
+        case ADV_TYPE_REPEATER: return theme::TEXT_PRIMARY();
+        case ADV_TYPE_ROOM:     return theme::ROOM_ACCENT();
+        case ADV_TYPE_SENSOR:   return theme::OFFGRID_ACCENT();
+        default:                return theme::TEXT_TIMESTAMP();
     }
 }
 
@@ -113,7 +113,7 @@ void HeardAdvertsScreen::create(lv_obj_t* parent) {
     lv_obj_set_size(_screen, Display::width(),
                     Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT);
     lv_obj_align(_screen, LV_ALIGN_BOTTOM_MID, 0, -theme::FOOTER_HEIGHT);
-    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(_screen, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_screen, 0, 0);
     lv_obj_set_style_radius(_screen, 0, 0);
@@ -130,7 +130,7 @@ void HeardAdvertsScreen::create(lv_obj_t* parent) {
 
     // Style the header
     lv_obj_t* header = lv_win_get_header(_screen);
-    lv_obj_set_style_bg_color(header, theme::BG_STATUS_BAR, 0);
+    lv_obj_set_style_bg_color(header, theme::BG_STATUS_BAR(), 0);
     lv_obj_set_style_bg_opa(header, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(header, 0, 0);
     lv_obj_set_style_radius(header, 0, 0);
@@ -146,12 +146,12 @@ void HeardAdvertsScreen::create(lv_obj_t* parent) {
 
     lv_obj_t* backLbl = lv_obj_get_child(_backBtn, 0);
     lv_obj_set_style_text_font(backLbl, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(backLbl, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(backLbl, theme::ACCENT(), 0);
 
     // Title
     lv_obj_t* title = lv_win_add_title(_screen, t("heard_adverts_title"));
     lv_obj_set_style_text_font(title, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY(), 0);
 
     // Icon buttons on the right: clear + advert
     auto makeIconBtn = [this](const char* sym, lv_event_cb_t cb, void* user) {
@@ -162,7 +162,7 @@ void HeardAdvertsScreen::create(lv_obj_t* parent) {
         lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, user);
         lv_obj_t* lbl = lv_obj_get_child(btn, 0);
         lv_obj_set_style_text_font(lbl, FONT_HEADING, 0);
-        lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY, 0);
+        lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY(), 0);
         return btn;
     };
 
@@ -191,12 +191,12 @@ void HeardAdvertsScreen::create(lv_obj_t* parent) {
     lv_obj_set_scrollbar_mode(_list, LV_SCROLLBAR_MODE_AUTO);
     lv_obj_set_style_width(_list, 3, LV_PART_SCROLLBAR);
     lv_obj_set_style_bg_opa(_list, LV_OPA_50, LV_PART_SCROLLBAR);
-    lv_obj_set_style_bg_color(_list, theme::TEXT_SECONDARY, LV_PART_SCROLLBAR);
+    lv_obj_set_style_bg_color(_list, theme::TEXT_SECONDARY(), LV_PART_SCROLLBAR);
 
     // Empty hint — lives in the content area, centered when visible
     _emptyHint = lv_label_create(cont);
     lv_obj_set_style_text_font(_emptyHint, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(_emptyHint, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(_emptyHint, theme::TEXT_SECONDARY(), 0);
     lv_obj_set_style_text_align(_emptyHint, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(_emptyHint, t("heard_adverts_empty"));
     lv_obj_add_flag(_emptyHint, LV_OBJ_FLAG_HIDDEN);
@@ -318,7 +318,7 @@ void HeardAdvertsScreen::rebuild() {
 
         lv_obj_t* row = lv_obj_create(_list);
         lv_obj_set_size(row, theme::CONTENT_WIDTH - theme::PAD_SMALL, LV_SIZE_CONTENT);  // matches ConvoListScreen, leaves room for scrollbar
-        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY, 0);
+        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY(), 0);
         lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(row, 0, 0);
         lv_obj_set_style_radius(row, 4, 0);
@@ -346,7 +346,7 @@ void HeardAdvertsScreen::rebuild() {
         lv_obj_t* icon = lv_label_create(row);
         lv_obj_set_style_text_font(icon, FONT_HEADING, 0);
         if (queued) {
-            lv_obj_set_style_text_color(icon, theme::OFFGRID_ACCENT, 0);
+            lv_obj_set_style_text_color(icon, theme::OFFGRID_ACCENT(), 0);
             lv_label_set_text(icon, LV_SYMBOL_REFRESH);
         } else {
             lv_obj_set_style_text_color(icon, typeColor(e.type), 0);
@@ -357,7 +357,7 @@ void HeardAdvertsScreen::rebuild() {
         lv_obj_t* name = lv_label_create(row);
         lv_obj_set_style_text_font(name, FONT_HEADING, 0);
         lv_obj_set_style_text_color(name,
-            (known || queued) ? theme::TEXT_TIMESTAMP : theme::TEXT_PRIMARY, 0);
+            (known || queued) ? theme::TEXT_TIMESTAMP() : theme::TEXT_PRIMARY(), 0);
         lv_obj_set_flex_grow(name, 1);
         lv_label_set_long_mode(name, LV_LABEL_LONG_DOT);
         String label = " ";
@@ -379,14 +379,14 @@ void HeardAdvertsScreen::rebuild() {
         // Hops
         lv_obj_t* hopsLbl = lv_label_create(row);
         lv_obj_set_style_text_font(hopsLbl, FONT_BODY, 0);
-        lv_obj_set_style_text_color(hopsLbl, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(hopsLbl, theme::TEXT_SECONDARY(), 0);
         String hopsText = " " + formatHops(e.hops) + " ";
         lv_label_set_text(hopsLbl, hopsText.c_str());
 
         // Age
         lv_obj_t* age = lv_label_create(row);
         lv_obj_set_style_text_font(age, FONT_BODY, 0);
-        lv_obj_set_style_text_color(age, theme::TEXT_TIMESTAMP, 0);
+        lv_obj_set_style_text_color(age, theme::TEXT_TIMESTAMP(), 0);
         lv_label_set_text(age, formatAge(e.lastHeardMs).c_str());
 
         // Info button — opens the detail dialog
@@ -406,7 +406,7 @@ void HeardAdvertsScreen::rebuild() {
         lv_obj_t* infoLbl = lv_label_create(infoBtn);
         lv_label_set_text(infoLbl, LV_SYMBOL_EYE_OPEN);
         lv_obj_set_style_text_font(infoLbl, FONT_HEADING, 0);
-        lv_obj_set_style_text_color(infoLbl, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_text_color(infoLbl, theme::TEXT_SECONDARY(), 0);
         lv_obj_center(infoLbl);
 
         // Map button — shown only when the advert carries a location
@@ -427,7 +427,7 @@ void HeardAdvertsScreen::rebuild() {
             lv_obj_t* mapLbl = lv_label_create(mapBtn);
             lv_label_set_text(mapLbl, LV_SYMBOL_GPS);
             lv_obj_set_style_text_font(mapLbl, FONT_HEADING, 0);
-            lv_obj_set_style_text_color(mapLbl, theme::ACCENT, 0);
+            lv_obj_set_style_text_color(mapLbl, theme::ACCENT(), 0);
             lv_obj_center(mapLbl);
         }
     }
@@ -576,8 +576,8 @@ void HeardAdvertsScreen::openDetail(int slotIdx) {
     lv_obj_set_width(_detailMsgbox, theme::MODAL_TEXT_WIDTH);
     lv_obj_set_height(_detailMsgbox, LV_SIZE_CONTENT);
     lv_obj_set_style_max_height(_detailMsgbox, 216, 0);
-    lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY(), 0);
     lv_obj_set_style_text_font(_detailMsgbox, FONT_HEADING, 0);
 
     // Uniform vertical breathing room between every body line — matches the
@@ -593,7 +593,7 @@ void HeardAdvertsScreen::openDetail(int slotIdx) {
 
     lv_obj_t* keyLabel = lv_label_create(_detailMsgbox);
     lv_obj_set_style_text_font(keyLabel, FONT_BODY, 0);
-    lv_obj_set_style_text_color(keyLabel, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(keyLabel, theme::TEXT_SECONDARY(), 0);
     lv_obj_set_style_text_line_space(keyLabel, 2, 0);
     lv_obj_set_style_pad_top(keyLabel, 2, 0);
     lv_label_set_text(keyLabel, keyText.c_str());
@@ -769,8 +769,8 @@ void HeardAdvertsScreen::showSimpleInfoModal(const char* msg) {
     lv_obj_center(_detailMsgbox);
     lv_obj_set_width(_detailMsgbox, theme::MODAL_TEXT_WIDTH);
     lv_obj_set_height(_detailMsgbox, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY(), 0);
     lv_obj_set_style_text_font(_detailMsgbox, FONT_HEADING, 0);
 
     lv_obj_t* btnm = lv_msgbox_get_btns(_detailMsgbox);
@@ -792,8 +792,8 @@ void HeardAdvertsScreen::showSavedConfirmation() {
     lv_obj_center(_detailMsgbox);
     lv_obj_set_width(_detailMsgbox, theme::MODAL_TEXT_WIDTH);
     lv_obj_set_height(_detailMsgbox, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY(), 0);
     lv_obj_set_style_text_font(_detailMsgbox, FONT_HEADING, 0);
 
     lv_obj_t* btnm = lv_msgbox_get_btns(_detailMsgbox);

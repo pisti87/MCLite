@@ -44,7 +44,7 @@ UIManager& UIManager::instance() {
 bool UIManager::init() {
     // Create a new screen for main UI (boot screen may still be active)
     _mainScreen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(_mainScreen, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_mainScreen, theme::BG_PRIMARY(), 0);
 
     // Create LVGL input group and bind input devices
     _inputGroup = lv_group_create();
@@ -505,10 +505,10 @@ void UIManager::showSOSAlert(const ConvoId& id, const Message& msg) {
     lv_obj_set_width(_sosMsgbox, theme::MODAL_TEXT_WIDTH);
 
     // Style: red border, high contrast
-    lv_obj_set_style_border_color(_sosMsgbox, theme::BATTERY_LOW, 0);
+    lv_obj_set_style_border_color(_sosMsgbox, theme::BATTERY_LOW(), 0);
     lv_obj_set_style_border_width(_sosMsgbox, 3, 0);
-    lv_obj_set_style_bg_color(_sosMsgbox, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_text_color(_sosMsgbox, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_sosMsgbox, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_text_color(_sosMsgbox, theme::TEXT_PRIMARY(), 0);
 
     // Switch trackball/keyboard to modal group so they can't navigate behind
     lv_obj_t* btnmatrix = lv_msgbox_get_btns(_sosMsgbox);
@@ -904,7 +904,7 @@ void UIManager::showSetupScreen(SetupReason reason) {
     lv_obj_t* overlay = lv_obj_create(lv_layer_top());
     lv_obj_set_size(overlay, Display::width(), Display::height());
     lv_obj_set_pos(overlay, 0, 0);
-    lv_obj_set_style_bg_color(overlay, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(overlay, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(overlay, 0, 0);
     lv_obj_set_style_pad_all(overlay, 20, 0);
@@ -915,17 +915,17 @@ void UIManager::showSetupScreen(SetupReason reason) {
     // Icon
     lv_obj_t* icon = lv_label_create(overlay);
     lv_obj_set_style_text_font(icon, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(icon, theme::BATTERY_LOW, 0);
+    lv_obj_set_style_text_color(icon, theme::BATTERY_LOW(), 0);
 
     // Title
     lv_obj_t* title = lv_label_create(overlay);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY(), 0);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
 
     // Message
     lv_obj_t* msg = lv_label_create(overlay);
-    lv_obj_set_style_text_color(msg, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(msg, theme::TEXT_SECONDARY(), 0);
     lv_obj_set_style_text_align(msg, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(msg, theme::MODAL_TEXT_WIDTH);
 
@@ -938,7 +938,7 @@ void UIManager::showSetupScreen(SetupReason reason) {
 
         case NO_CONFIG:
             lv_label_set_text(icon, LV_SYMBOL_SD_CARD);
-            lv_obj_set_style_text_color(icon, theme::TEXT_PRIMARY, 0);
+            lv_obj_set_style_text_color(icon, theme::TEXT_PRIMARY(), 0);
             lv_label_set_text(title, t("setup_title"));
             lv_label_set_text(msg, t("setup_msg"));
             break;
@@ -952,7 +952,7 @@ void UIManager::showSetupScreen(SetupReason reason) {
 
     // Footer hint
     lv_obj_t* footer = lv_label_create(overlay);
-    lv_obj_set_style_text_color(footer, lv_color_make(0x55, 0x55, 0x77), 0);
+    lv_obj_set_style_text_color(footer, theme::TEXT_TIMESTAMP(), 0);
     lv_label_set_text(footer, "MCLite v" MCLITE_VERSION);
 
     LOGF("[UI] Setup screen shown (reason=%d)\n", (int)reason);
@@ -1018,8 +1018,8 @@ void UIManager::updateSOSHold() {
         _sosCountdownActive = true;
         _sosCountdownLabel = lv_label_create(lv_layer_top());
         lv_obj_set_style_bg_opa(_sosCountdownLabel, LV_OPA_80, 0);
-        lv_obj_set_style_bg_color(_sosCountdownLabel, lv_color_black(), 0);
-        lv_obj_set_style_text_color(_sosCountdownLabel, theme::BATTERY_LOW, 0);
+        lv_obj_set_style_bg_color(_sosCountdownLabel, theme::SCRIM(), 0);
+        lv_obj_set_style_text_color(_sosCountdownLabel, theme::BATTERY_LOW(), 0);
         lv_obj_set_style_text_font(_sosCountdownLabel, &lv_font_montserrat_20, 0);
         lv_obj_set_style_pad_all(_sosCountdownLabel, 12, 0);
         lv_obj_set_style_radius(_sosCountdownLabel, 8, 0);
@@ -1155,10 +1155,10 @@ void UIManager::sendSOSToAll() {
     lv_obj_t* msgbox = lv_msgbox_create(NULL, sentTitleStr.c_str(), confirmBuf, sentBtns, false);
     lv_obj_set_width(msgbox, theme::MODAL_TEXT_WIDTH);
     lv_obj_center(msgbox);
-    lv_obj_set_style_border_color(msgbox, theme::BATTERY_LOW, 0);
+    lv_obj_set_style_border_color(msgbox, theme::BATTERY_LOW(), 0);
     lv_obj_set_style_border_width(msgbox, 2, 0);
-    lv_obj_set_style_bg_color(msgbox, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_text_color(msgbox, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_bg_color(msgbox, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_text_color(msgbox, theme::TEXT_PRIMARY(), 0);
     lv_obj_move_foreground(msgbox);
 
     lv_obj_t* btnmatrix = lv_msgbox_get_btns(msgbox);
@@ -1280,7 +1280,7 @@ void UIManager::showPinLock() {
     _pinOverlay = lv_obj_create(lv_layer_top());
     lv_obj_set_size(_pinOverlay, Display::width(), Display::height());
     lv_obj_set_pos(_pinOverlay, 0, 0);
-    lv_obj_set_style_bg_color(_pinOverlay, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_pinOverlay, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(_pinOverlay, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_pinOverlay, 0, 0);
     lv_obj_set_style_radius(_pinOverlay, 0, 0);
@@ -1293,25 +1293,25 @@ void UIManager::showPinLock() {
     // Lock icon
     lv_obj_t* lockIcon = lv_label_create(_pinOverlay);
     lv_obj_set_style_text_font(lockIcon, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(lockIcon, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(lockIcon, theme::ACCENT(), 0);
     lv_label_set_text(lockIcon, ICON_LOCK);
 
     // Title
     lv_obj_t* title = lv_label_create(_pinOverlay);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY(), 0);
     lv_label_set_text(title, t("pin_title"));
 
     // PIN dots display
     _pinDots = lv_label_create(_pinOverlay);
     lv_obj_set_style_text_font(_pinDots, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(_pinDots, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_pinDots, theme::TEXT_PRIMARY(), 0);
     lv_label_set_text(_pinDots, "");
 
     // Status message (for errors)
     _pinStatus = lv_label_create(_pinOverlay);
     lv_obj_set_style_text_font(_pinStatus, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_pinStatus, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(_pinStatus, theme::TEXT_SECONDARY(), 0);
     lv_label_set_text(_pinStatus, t("pin_hint"));
 
     // Use a dedicated group so trackball/keyboard can't focus away from the overlay
@@ -1360,7 +1360,7 @@ void UIManager::onPinKey(uint32_t key) {
             return;
         } else {
             // Wrong PIN
-            lv_obj_set_style_text_color(_pinStatus, theme::BATTERY_LOW, 0);
+            lv_obj_set_style_text_color(_pinStatus, theme::BATTERY_LOW(), 0);
             lv_label_set_text(_pinStatus, t("pin_wrong"));
             _pinBuffer = "";
         }
@@ -1368,7 +1368,7 @@ void UIManager::onPinKey(uint32_t key) {
         if (_pinBuffer.length() < 8) {
             _pinBuffer += (char)tolower(key);
             // Reset status to normal after typing
-            lv_obj_set_style_text_color(_pinStatus, theme::TEXT_SECONDARY, 0);
+            lv_obj_set_style_text_color(_pinStatus, theme::TEXT_SECONDARY(), 0);
             lv_label_set_text(_pinStatus, "");
         }
     }
@@ -1682,8 +1682,8 @@ void UIManager::buildTelemetryMsgbox(bool canMap) {
     lv_obj_set_width(_telemMsgbox, theme::MODAL_TEXT_WIDTH);
     lv_obj_set_height(_telemMsgbox, LV_SIZE_CONTENT);
     lv_obj_set_style_max_height(_telemMsgbox, 200, 0);
-    lv_obj_set_style_bg_color(_telemMsgbox, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_text_color(_telemMsgbox, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_telemMsgbox, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_text_color(_telemMsgbox, theme::TEXT_PRIMARY(), 0);
     lv_obj_set_style_text_font(_telemMsgbox, FONT_NORMAL, 0);
 
     lv_obj_t* content = lv_msgbox_get_text(_telemMsgbox);
@@ -1742,9 +1742,9 @@ void UIManager::showToast(const char* msg, uint32_t durationMs) {
     // bg even with bg styles set — labels paint glyphs only).
     lv_obj_t* toast = lv_obj_create(lv_layer_top());
     lv_obj_remove_style_all(toast);  // start clean
-    lv_obj_set_style_bg_color(toast, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_bg_color(toast, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_bg_opa(toast, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(toast, theme::ACCENT, 0);
+    lv_obj_set_style_border_color(toast, theme::ACCENT(), 0);
     lv_obj_set_style_border_width(toast, 1, 0);
     lv_obj_set_style_radius(toast, 6, 0);
     lv_obj_set_style_pad_hor(toast, 12, 0);
@@ -1753,7 +1753,7 @@ void UIManager::showToast(const char* msg, uint32_t durationMs) {
     lv_obj_clear_flag(toast, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* lbl = lv_label_create(toast);
-    lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY(), 0);
     lv_obj_set_style_text_font(lbl, FONT_NORMAL, 0);
     lv_label_set_text(lbl, msg);
 
@@ -1834,8 +1834,8 @@ void UIManager::buildFwInstallModal() {
     lv_obj_t* msgbox = lv_msgbox_create(NULL, t("fw_update_title"), bodyBuf, btns, false);
     lv_obj_center(msgbox);
     lv_obj_set_width(msgbox, theme::MODAL_TEXT_WIDTH);
-    lv_obj_set_style_bg_color(msgbox, theme::BG_SECONDARY, 0);
-    lv_obj_set_style_text_color(msgbox, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_bg_color(msgbox, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_text_color(msgbox, theme::TEXT_PRIMARY(), 0);
     lv_obj_set_style_text_font(msgbox, FONT_HEADING, 0);
 
     lv_obj_t* btnm = lv_msgbox_get_btns(msgbox);
@@ -1887,14 +1887,14 @@ void UIManager::doFirmwareInstall() {
     lv_obj_t* ov = lv_obj_create(lv_layer_top());
     lv_obj_set_size(ov, Display::width(), Display::height());
     lv_obj_set_pos(ov, 0, 0);
-    lv_obj_set_style_bg_color(ov, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(ov, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(ov, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(ov, 0, 0);
     lv_obj_clear_flag(ov, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* lbl = lv_label_create(ov);
     lv_label_set_text(lbl, t("fw_installing"));
-    lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY(), 0);
     lv_obj_set_style_text_font(lbl, FONT_HEADING, 0);
     lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(lbl, theme::MODAL_TEXT_WIDTH);
@@ -1999,7 +1999,7 @@ void UIManager::showKeyLockOverlay() {
     _keyLockOverlay = lv_obj_create(lv_layer_top());
     lv_obj_set_size(_keyLockOverlay, Display::width(), Display::height());
     lv_obj_set_pos(_keyLockOverlay, 0, 0);
-    lv_obj_set_style_bg_color(_keyLockOverlay, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(_keyLockOverlay, theme::SCRIM(), 0);
     lv_obj_set_style_bg_opa(_keyLockOverlay, LV_OPA_70, 0);
     lv_obj_set_style_border_width(_keyLockOverlay, 0, 0);
     lv_obj_set_style_radius(_keyLockOverlay, 0, 0);
@@ -2017,13 +2017,13 @@ void UIManager::showKeyLockOverlay() {
 #endif
 
     lv_obj_set_size(card, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(card, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_bg_color(card, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(card, theme::PAD_LARGE, 0);
     lv_obj_set_style_pad_row(card, theme::PAD_SMALL, 0);
     lv_obj_set_style_radius(card, 8, 0);
     lv_obj_set_style_border_width(card, 2, 0);
-    lv_obj_set_style_border_color(card, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_border_color(card, theme::TEXT_SECONDARY(), 0);
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_flex_flow(card, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(card, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -2032,12 +2032,12 @@ void UIManager::showKeyLockOverlay() {
     lv_obj_t* icon = lv_label_create(card);
     lv_label_set_text(icon, LV_SYMBOL_KEYBOARD);
     lv_obj_set_style_text_font(icon, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(icon, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(icon, theme::TEXT_PRIMARY(), 0);
 
     lv_obj_t* title = lv_label_create(card);
     lv_label_set_text(title, t("key_locked"));
     lv_obj_set_style_text_font(title, FONT_LARGE, 0);
-    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY(), 0);
 
     lv_obj_t* hint = lv_label_create(card);
 #ifdef PLATFORM_TWATCH
@@ -2046,7 +2046,7 @@ void UIManager::showKeyLockOverlay() {
     lv_label_set_text(hint, t("key_lock_hint"));
 #endif
     lv_obj_set_style_text_font(hint, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(hint, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(hint, theme::TEXT_SECONDARY(), 0);
 }
 
 void UIManager::hideKeyLockOverlay() {

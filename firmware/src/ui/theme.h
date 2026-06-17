@@ -23,28 +23,156 @@ LV_FONT_DECLARE(lv_font_emoji_20)
 namespace mclite {
 namespace theme {
 
-// Colors — dark theme, high contrast for daylight readability
-constexpr lv_color_t BG_PRIMARY      = LV_COLOR_MAKE(0x1A, 0x1A, 0x2E);  // Deep navy
-constexpr lv_color_t BG_SECONDARY    = LV_COLOR_MAKE(0x16, 0x21, 0x3E);  // Slightly lighter
-constexpr lv_color_t BG_STATUS_BAR   = LV_COLOR_MAKE(0x0F, 0x0F, 0x1A);  // Darkest
-constexpr lv_color_t BG_INPUT        = LV_COLOR_MAKE(0x22, 0x22, 0x3A);  // Input field
+// ─── Colors: runtime-selectable palette ───────────────────────────────────
+// Colors used to be compile-time constexpr; they're now members of a Palette
+// chosen at boot (see theme.cpp / applyThemeFromConfig) so the UI can be themed.
+// Call sites use accessor functions: theme::BG_PRIMARY(), theme::ACCENT(), …
+// Spacing / fonts / sizes further below stay constexpr (not themed).
+//
+// Member order is the canonical order — keep it in sync with the ColorKey
+// registry in theme.cpp and with every built-in palette initializer below.
+struct Palette {
+    lv_color_t bg_primary, bg_secondary, bg_status_bar, bg_input;
+    lv_color_t text_primary, text_secondary, text_timestamp;
+    lv_color_t bubble_self, bubble_self_meta, bubble_them, bubble_self_text;
+    lv_color_t accent, unread_dot, online_dot, battery_low, battery_ok,
+               gps_last_known, offgrid_accent, room_accent;
+    lv_color_t scrim, text_on_accent;
+};
 
-constexpr lv_color_t TEXT_PRIMARY    = LV_COLOR_MAKE(0xE8, 0xE8, 0xF0);  // Bright white
-constexpr lv_color_t TEXT_SECONDARY  = LV_COLOR_MAKE(0x88, 0x88, 0xAA);  // Muted
-constexpr lv_color_t TEXT_TIMESTAMP  = LV_COLOR_MAKE(0x66, 0x66, 0x88);  // Dim
+// DARK — the original values; appearance unchanged from the pre-theme build.
+constexpr Palette PALETTE_DARK = {
+    LV_COLOR_MAKE(0x1A, 0x1A, 0x2E),  // bg_primary       deep navy
+    LV_COLOR_MAKE(0x16, 0x21, 0x3E),  // bg_secondary
+    LV_COLOR_MAKE(0x0F, 0x0F, 0x1A),  // bg_status_bar    darkest
+    LV_COLOR_MAKE(0x22, 0x22, 0x3A),  // bg_input
+    LV_COLOR_MAKE(0xE8, 0xE8, 0xF0),  // text_primary     bright white
+    LV_COLOR_MAKE(0x88, 0x88, 0xAA),  // text_secondary   muted
+    LV_COLOR_MAKE(0x66, 0x66, 0x88),  // text_timestamp   dim
+    LV_COLOR_MAKE(0x00, 0x5A, 0xD4),  // bubble_self      blue (outgoing)
+    LV_COLOR_MAKE(0x99, 0xBB, 0xEE),  // bubble_self_meta light blue
+    LV_COLOR_MAKE(0x2A, 0x2A, 0x45),  // bubble_them      dark gray (incoming)
+    LV_COLOR_MAKE(0xE8, 0xE8, 0xF0),  // bubble_self_text == text_primary (dark)
+    LV_COLOR_MAKE(0x00, 0x7A, 0xFF),  // accent           bright blue
+    LV_COLOR_MAKE(0x00, 0xCC, 0x66),  // unread_dot       green
+    LV_COLOR_MAKE(0x00, 0xCC, 0x66),  // online_dot       green
+    LV_COLOR_MAKE(0xFF, 0x44, 0x44),  // battery_low      red
+    LV_COLOR_MAKE(0x00, 0xCC, 0x66),  // battery_ok       green
+    LV_COLOR_MAKE(0xFF, 0xAA, 0x00),  // gps_last_known   amber
+    LV_COLOR_MAKE(0xFF, 0x8C, 0x00),  // offgrid_accent   warm orange
+    LV_COLOR_MAKE(0xA2, 0x59, 0xFF),  // room_accent      purple
+    LV_COLOR_MAKE(0x00, 0x00, 0x00),  // scrim            modal backdrop (black)
+    LV_COLOR_MAKE(0xFF, 0xFF, 0xFF),  // text_on_accent   white
+};
 
-constexpr lv_color_t BUBBLE_SELF      = LV_COLOR_MAKE(0x00, 0x5A, 0xD4);  // Blue (outgoing)
-constexpr lv_color_t BUBBLE_SELF_META = LV_COLOR_MAKE(0x99, 0xBB, 0xEE);  // Light blue (timestamp on blue)
-constexpr lv_color_t BUBBLE_THEM      = LV_COLOR_MAKE(0x2A, 0x2A, 0x45);  // Dark gray (incoming)
+// LIGHT — bright surfaces, dark text; for daylight / indoor use.
+constexpr Palette PALETTE_LIGHT = {
+    LV_COLOR_MAKE(0xEE, 0xF0, 0xF4),  // bg_primary
+    LV_COLOR_MAKE(0xFF, 0xFF, 0xFF),  // bg_secondary    cards
+    LV_COLOR_MAKE(0xDC, 0xE0, 0xE8),  // bg_status_bar
+    LV_COLOR_MAKE(0xFF, 0xFF, 0xFF),  // bg_input
+    LV_COLOR_MAKE(0x1A, 0x1A, 0x2E),  // text_primary    dark navy
+    LV_COLOR_MAKE(0x5A, 0x62, 0x75),  // text_secondary
+    LV_COLOR_MAKE(0x90, 0x98, 0xA8),  // text_timestamp
+    LV_COLOR_MAKE(0x0A, 0x6C, 0xF0),  // bubble_self     blue
+    LV_COLOR_MAKE(0xD2, 0xE4, 0xFF),  // bubble_self_meta
+    LV_COLOR_MAKE(0xE6, 0xE9, 0xF2),  // bubble_them     light gray
+    LV_COLOR_MAKE(0xFF, 0xFF, 0xFF),  // bubble_self_text white on blue
+    LV_COLOR_MAKE(0x0A, 0x6C, 0xF0),  // accent
+    LV_COLOR_MAKE(0x0F, 0xA9, 0x58),  // unread_dot      green
+    LV_COLOR_MAKE(0x0F, 0xA9, 0x58),  // online_dot
+    LV_COLOR_MAKE(0xE0, 0x31, 0x31),  // battery_low
+    LV_COLOR_MAKE(0x0F, 0xA9, 0x58),  // battery_ok
+    LV_COLOR_MAKE(0xD9, 0x82, 0x00),  // gps_last_known
+    LV_COLOR_MAKE(0xE0, 0x7A, 0x00),  // offgrid_accent
+    LV_COLOR_MAKE(0x8A, 0x3F, 0xFE),  // room_accent
+    LV_COLOR_MAKE(0x00, 0x00, 0x00),  // scrim
+    LV_COLOR_MAKE(0xFF, 0xFF, 0xFF),  // text_on_accent
+};
 
-constexpr lv_color_t ACCENT          = LV_COLOR_MAKE(0x00, 0x7A, 0xFF);  // Bright blue
-constexpr lv_color_t UNREAD_DOT      = LV_COLOR_MAKE(0x00, 0xCC, 0x66);  // Green
-constexpr lv_color_t ONLINE_DOT      = LV_COLOR_MAKE(0x00, 0xCC, 0x66);  // Green
-constexpr lv_color_t BATTERY_LOW     = LV_COLOR_MAKE(0xFF, 0x44, 0x44);  // Red
-constexpr lv_color_t BATTERY_OK      = LV_COLOR_MAKE(0x00, 0xCC, 0x66);  // Green
-constexpr lv_color_t GPS_LAST_KNOWN  = LV_COLOR_MAKE(0xFF, 0xAA, 0x00);  // Amber/yellow
-constexpr lv_color_t OFFGRID_ACCENT  = LV_COLOR_MAKE(0xFF, 0x8C, 0x00);  // Warm orange (offgrid mode indicator)
-constexpr lv_color_t ROOM_ACCENT     = LV_COLOR_MAKE(0xA2, 0x59, 0xFF);  // Purple (room server icon/header)
+// AMBER — "military" night mode: warm-black surfaces, amber text, preserves
+// night vision.
+constexpr Palette PALETTE_AMBER = {
+    LV_COLOR_MAKE(0x0A, 0x06, 0x00),  // bg_primary
+    LV_COLOR_MAKE(0x16, 0x0E, 0x00),  // bg_secondary
+    LV_COLOR_MAKE(0x05, 0x03, 0x00),  // bg_status_bar
+    LV_COLOR_MAKE(0x1C, 0x12, 0x00),  // bg_input
+    LV_COLOR_MAKE(0xFF, 0xB0, 0x00),  // text_primary    amber
+    LV_COLOR_MAKE(0xB3, 0x7A, 0x00),  // text_secondary
+    LV_COLOR_MAKE(0x7A, 0x52, 0x00),  // text_timestamp
+    LV_COLOR_MAKE(0x3A, 0x24, 0x00),  // bubble_self     dark amber
+    LV_COLOR_MAKE(0xC8, 0x90, 0x2A),  // bubble_self_meta
+    LV_COLOR_MAKE(0x1E, 0x13, 0x00),  // bubble_them
+    LV_COLOR_MAKE(0xFF, 0xC0, 0x20),  // bubble_self_text bright amber
+    LV_COLOR_MAKE(0xFF, 0x8C, 0x00),  // accent          bright amber
+    LV_COLOR_MAKE(0xFF, 0xB0, 0x00),  // unread_dot
+    LV_COLOR_MAKE(0xFF, 0xB0, 0x00),  // online_dot
+    LV_COLOR_MAKE(0xFF, 0x30, 0x00),  // battery_low     red still reads as alarm
+    LV_COLOR_MAKE(0xFF, 0xB0, 0x00),  // battery_ok
+    LV_COLOR_MAKE(0xFF, 0xC0, 0x20),  // gps_last_known
+    LV_COLOR_MAKE(0xFF, 0x6A, 0x00),  // offgrid_accent
+    LV_COLOR_MAKE(0xFF, 0xA0, 0x40),  // room_accent
+    LV_COLOR_MAKE(0x00, 0x00, 0x00),  // scrim
+    LV_COLOR_MAKE(0x1A, 0x0E, 0x00),  // text_on_accent  dark on bright amber
+};
+
+// HIGH-CONTRAST — pure black, bright text/accents for maximum legibility.
+constexpr Palette PALETTE_HIGHCON = {
+    LV_COLOR_MAKE(0x00, 0x00, 0x00),  // bg_primary
+    LV_COLOR_MAKE(0x0A, 0x0A, 0x0A),  // bg_secondary
+    LV_COLOR_MAKE(0x00, 0x00, 0x00),  // bg_status_bar
+    LV_COLOR_MAKE(0x14, 0x14, 0x14),  // bg_input
+    LV_COLOR_MAKE(0xFF, 0xFF, 0xFF),  // text_primary    white
+    LV_COLOR_MAKE(0xC8, 0xC8, 0xC8),  // text_secondary
+    LV_COLOR_MAKE(0xA0, 0xA0, 0xA0),  // text_timestamp
+    LV_COLOR_MAKE(0x00, 0x50, 0xFF),  // bubble_self
+    LV_COLOR_MAKE(0xD0, 0xE0, 0xFF),  // bubble_self_meta
+    LV_COLOR_MAKE(0x20, 0x20, 0x20),  // bubble_them
+    LV_COLOR_MAKE(0xFF, 0xFF, 0xFF),  // bubble_self_text
+    LV_COLOR_MAKE(0x00, 0xA0, 0xFF),  // accent          bright blue
+    LV_COLOR_MAKE(0x00, 0xFF, 0x66),  // unread_dot
+    LV_COLOR_MAKE(0x00, 0xFF, 0x66),  // online_dot
+    LV_COLOR_MAKE(0xFF, 0x20, 0x20),  // battery_low
+    LV_COLOR_MAKE(0x00, 0xFF, 0x66),  // battery_ok
+    LV_COLOR_MAKE(0xFF, 0xC0, 0x00),  // gps_last_known
+    LV_COLOR_MAKE(0xFF, 0x80, 0x00),  // offgrid_accent
+    LV_COLOR_MAKE(0xC0, 0x80, 0xFF),  // room_accent
+    LV_COLOR_MAKE(0x00, 0x00, 0x00),  // scrim
+    LV_COLOR_MAKE(0x00, 0x00, 0x00),  // text_on_accent  black on bright accent
+};
+
+// The active palette — defined in theme.cpp, set once at boot by
+// applyThemeFromConfig() before any screen is built.
+extern Palette ACTIVE;
+
+inline lv_color_t BG_PRIMARY()       { return ACTIVE.bg_primary; }
+inline lv_color_t BG_SECONDARY()     { return ACTIVE.bg_secondary; }
+inline lv_color_t BG_STATUS_BAR()    { return ACTIVE.bg_status_bar; }
+inline lv_color_t BG_INPUT()         { return ACTIVE.bg_input; }
+inline lv_color_t TEXT_PRIMARY()     { return ACTIVE.text_primary; }
+inline lv_color_t TEXT_SECONDARY()   { return ACTIVE.text_secondary; }
+inline lv_color_t TEXT_TIMESTAMP()   { return ACTIVE.text_timestamp; }
+inline lv_color_t BUBBLE_SELF()      { return ACTIVE.bubble_self; }
+inline lv_color_t BUBBLE_SELF_META() { return ACTIVE.bubble_self_meta; }
+inline lv_color_t BUBBLE_THEM()      { return ACTIVE.bubble_them; }
+inline lv_color_t BUBBLE_SELF_TEXT() { return ACTIVE.bubble_self_text; }
+inline lv_color_t ACCENT()           { return ACTIVE.accent; }
+inline lv_color_t UNREAD_DOT()       { return ACTIVE.unread_dot; }
+inline lv_color_t ONLINE_DOT()       { return ACTIVE.online_dot; }
+inline lv_color_t BATTERY_LOW()      { return ACTIVE.battery_low; }
+inline lv_color_t BATTERY_OK()       { return ACTIVE.battery_ok; }
+inline lv_color_t GPS_LAST_KNOWN()   { return ACTIVE.gps_last_known; }
+inline lv_color_t OFFGRID_ACCENT()   { return ACTIVE.offgrid_accent; }
+inline lv_color_t ROOM_ACCENT()      { return ACTIVE.room_accent; }
+inline lv_color_t SCRIM()            { return ACTIVE.scrim; }
+inline lv_color_t TEXT_ON_ACCENT()   { return ACTIVE.text_on_accent; }
+
+// Resolve config.display.theme (built-in or custom) into ACTIVE. Call once at
+// boot, before the UI is created.
+void applyThemeFromConfig();
+// Look up a built-in palette by canonical name ("dark"/"light"/"amber"/
+// "high_contrast"); nullptr if unknown. Custom themes are resolved separately.
+const Palette* builtinPaletteByName(const char* name);
 
 // Spacing
 constexpr int PAD_SMALL   = 4;

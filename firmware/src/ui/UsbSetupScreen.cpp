@@ -14,7 +14,7 @@ void UsbSetupScreen::create(lv_obj_t* parent) {
     lv_obj_set_size(_screen, Display::width(),
                     Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT);
     lv_obj_align(_screen, LV_ALIGN_BOTTOM_MID, 0, -theme::FOOTER_HEIGHT);
-    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY, 0);
+    lv_obj_set_style_bg_color(_screen, theme::BG_PRIMARY(), 0);
     lv_obj_set_style_bg_opa(_screen, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_screen, 0, 0);
     lv_obj_set_style_radius(_screen, 0, 0);
@@ -31,7 +31,7 @@ void UsbSetupScreen::create(lv_obj_t* parent) {
 
     // Style the header
     lv_obj_t* header = lv_win_get_header(_screen);
-    lv_obj_set_style_bg_color(header, theme::BG_STATUS_BAR, 0);
+    lv_obj_set_style_bg_color(header, theme::BG_STATUS_BAR(), 0);
     lv_obj_set_style_bg_opa(header, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(header, 0, 0);
     lv_obj_set_style_radius(header, 0, 0);
@@ -47,12 +47,12 @@ void UsbSetupScreen::create(lv_obj_t* parent) {
 
     lv_obj_t* backLbl = lv_obj_get_child(_backBtn, 0);
     lv_obj_set_style_text_font(backLbl, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(backLbl, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(backLbl, theme::ACCENT(), 0);
 
     // Title
     lv_obj_t* title = lv_win_add_title(_screen, t("usb_companion"));
     lv_obj_set_style_text_font(title, FONT_HEADING, 0);
-    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(title, theme::TEXT_PRIMARY(), 0);
 
     // Content area
     lv_obj_t* cont = lv_win_get_content(_screen);
@@ -66,7 +66,7 @@ void UsbSetupScreen::create(lv_obj_t* parent) {
     // Control row: status text + switch
     lv_obj_t* ctl = lv_obj_create(cont);
     lv_obj_set_size(ctl, theme::CONTENT_WIDTH, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(ctl, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_bg_color(ctl, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_radius(ctl, 4, 0);
     lv_obj_set_style_border_width(ctl, 0, 0);
     lv_obj_set_style_pad_all(ctl, theme::PAD_SMALL, 0);
@@ -78,7 +78,7 @@ void UsbSetupScreen::create(lv_obj_t* parent) {
     lv_label_set_long_mode(_statusLabel, LV_LABEL_LONG_DOT);
     lv_obj_set_flex_grow(_statusLabel, 1);
     lv_obj_set_style_text_font(_statusLabel, FONT_BODY, 0);
-    lv_obj_set_style_text_color(_statusLabel, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_statusLabel, theme::TEXT_PRIMARY(), 0);
 
     _switch = lv_switch_create(ctl);
     lv_obj_add_event_cb(_switch, switchCb, LV_EVENT_VALUE_CHANGED, this);
@@ -89,7 +89,7 @@ void UsbSetupScreen::create(lv_obj_t* parent) {
     lv_obj_set_width(hint, theme::CONTENT_WIDTH);
     lv_obj_set_style_pad_all(hint, theme::PAD_SMALL, 0);
     lv_obj_set_style_text_font(hint, FONT_BODY, 0);
-    lv_obj_set_style_text_color(hint, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(hint, theme::TEXT_SECONDARY(), 0);
     lv_label_set_text(hint, t("usb_companion_hint"));
 
     lv_obj_add_flag(_screen, LV_OBJ_FLAG_HIDDEN);

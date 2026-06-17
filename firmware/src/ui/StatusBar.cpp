@@ -16,7 +16,7 @@ void StatusBar::create(lv_obj_t* parent) {
     _bar = lv_obj_create(parent);
     lv_obj_set_size(_bar, Display::width(), theme::STATUS_BAR_HEIGHT);
     lv_obj_align(_bar, LV_ALIGN_TOP_MID, 0, theme::SAFE_AREA_TOP);
-    lv_obj_set_style_bg_color(_bar, theme::BG_STATUS_BAR, 0);
+    lv_obj_set_style_bg_color(_bar, theme::BG_STATUS_BAR(), 0);
     lv_obj_set_style_bg_opa(_bar, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_bar, 0, 0);
     lv_obj_set_style_radius(_bar, 0, 0);
@@ -58,13 +58,13 @@ void StatusBar::create(lv_obj_t* parent) {
     _lblOffgrid = lv_label_create(_nameRow);
     lv_label_set_text(_lblOffgrid, "OFFGRID");
     lv_obj_set_style_text_font(_lblOffgrid, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_lblOffgrid, theme::OFFGRID_ACCENT, 0);
+    lv_obj_set_style_text_color(_lblOffgrid, theme::OFFGRID_ACCENT(), 0);
     lv_obj_add_flag(_lblOffgrid, LV_OBJ_FLAG_HIDDEN);
 
     // Device name — content-sized so the row centers it.
     _lblName = lv_label_create(_nameRow);
     lv_obj_set_style_text_font(_lblName, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_lblName, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_lblName, theme::TEXT_PRIMARY(), 0);
     lv_label_set_long_mode(_lblName, LV_LABEL_LONG_DOT);
 
     const auto& cfg = ConfigManager::instance().config();
@@ -79,34 +79,34 @@ void StatusBar::create(lv_obj_t* parent) {
 
     _gpsIcon = lv_label_create(_iconRow);
     lv_obj_set_style_text_font(_gpsIcon, FONT_STATUSBAR_ICON, 0);
-    lv_obj_set_style_text_color(_gpsIcon, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(_gpsIcon, theme::TEXT_SECONDARY(), 0);
     lv_obj_add_flag(_gpsIcon, LV_OBJ_FLAG_CLICKABLE);   // tap → general map
     lv_obj_set_ext_click_area(_gpsIcon, 8);
     lv_obj_add_event_cb(_gpsIcon, gpsClickCb, LV_EVENT_CLICKED, this);
 
     _wifiIcon = lv_label_create(_iconRow);  // between GPS and battery
     lv_obj_set_style_text_font(_wifiIcon, FONT_STATUSBAR_ICON, 0);
-    lv_obj_set_style_text_color(_wifiIcon, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(_wifiIcon, theme::ACCENT(), 0);
     lv_label_set_text(_wifiIcon, LV_SYMBOL_WIFI);
     lv_obj_add_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
 
     _bleIcon = lv_label_create(_iconRow);
     lv_obj_set_style_text_font(_bleIcon, FONT_STATUSBAR_ICON, 0);
-    lv_obj_set_style_text_color(_bleIcon, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(_bleIcon, theme::ACCENT(), 0);
     lv_label_set_text(_bleIcon, LV_SYMBOL_BLUETOOTH);
     lv_obj_add_flag(_bleIcon, LV_OBJ_FLAG_HIDDEN);
 
     _lblBatt = lv_label_create(_iconRow);
     lv_label_set_recolor(_lblBatt, true);   // recolor the charge bolt independently
     lv_obj_set_style_text_font(_lblBatt, FONT_STATUSBAR_ICON, 0);
-    lv_obj_set_style_text_color(_lblBatt, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_lblBatt, theme::TEXT_PRIMARY(), 0);
 
     // Footer bar — bottom of the screen, mirrors the status bar.
     // Absorbs the rounded-bottom safe area via FOOTER_PAD_V.
     _footer = lv_obj_create(parent);
     lv_obj_set_size(_footer, Display::width(), theme::FOOTER_HEIGHT);
     lv_obj_align(_footer, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_obj_set_style_bg_color(_footer, theme::BG_STATUS_BAR, 0);
+    lv_obj_set_style_bg_color(_footer, theme::BG_STATUS_BAR(), 0);
     lv_obj_set_style_bg_opa(_footer, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(_footer, 0, 0);
     lv_obj_set_style_radius(_footer, 0, 0);
@@ -119,7 +119,7 @@ void StatusBar::create(lv_obj_t* parent) {
 
     _lblTime = lv_label_create(_footer);
     lv_obj_set_style_text_font(_lblTime, FONT_STATUSBAR_ICON, 0);
-    lv_obj_set_style_text_color(_lblTime, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_lblTime, theme::TEXT_PRIMARY(), 0);
 #else
     // T-Deck: single flex-row, device name left (grow), icons right.
     lv_obj_set_flex_flow(_bar, LV_FLEX_FLOW_ROW);
@@ -131,14 +131,14 @@ void StatusBar::create(lv_obj_t* parent) {
     _lblOffgrid = lv_label_create(_bar);
     lv_label_set_text(_lblOffgrid, "OFFGRID");
     lv_obj_set_style_text_font(_lblOffgrid, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_lblOffgrid, theme::OFFGRID_ACCENT, 0);
+    lv_obj_set_style_text_color(_lblOffgrid, theme::OFFGRID_ACCENT(), 0);
     lv_obj_add_flag(_lblOffgrid, LV_OBJ_FLAG_HIDDEN);
 
     // Device name (left, takes remaining space). LONG_DOT so long names truncate
     // instead of wrapping when the OFFGRID label shares the left side.
     _lblName = lv_label_create(_bar);
     lv_obj_set_style_text_font(_lblName, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_lblName, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_lblName, theme::TEXT_PRIMARY(), 0);
     lv_label_set_long_mode(_lblName, LV_LABEL_LONG_DOT);
     lv_obj_set_flex_grow(_lblName, 1);
 
@@ -157,7 +157,7 @@ void StatusBar::create(lv_obj_t* parent) {
     // GPS indicator
     _gpsIcon = lv_label_create(_bar);
     lv_obj_set_style_text_font(_gpsIcon, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_gpsIcon, theme::TEXT_SECONDARY, 0);
+    lv_obj_set_style_text_color(_gpsIcon, theme::TEXT_SECONDARY(), 0);
     lv_obj_add_flag(_gpsIcon, LV_OBJ_FLAG_CLICKABLE);   // tap → general map
     lv_obj_set_ext_click_area(_gpsIcon, 8);
     lv_obj_add_event_cb(_gpsIcon, gpsClickCb, LV_EVENT_CLICKED, this);
@@ -165,13 +165,13 @@ void StatusBar::create(lv_obj_t* parent) {
     // WiFi indicator (between GPS and battery) — shown only while connected
     _wifiIcon = lv_label_create(_bar);
     lv_obj_set_style_text_font(_wifiIcon, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_wifiIcon, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(_wifiIcon, theme::ACCENT(), 0);
     lv_label_set_text(_wifiIcon, LV_SYMBOL_WIFI);
     lv_obj_add_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
 
     _bleIcon = lv_label_create(_bar);
     lv_obj_set_style_text_font(_bleIcon, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_bleIcon, theme::ACCENT, 0);
+    lv_obj_set_style_text_color(_bleIcon, theme::ACCENT(), 0);
     lv_label_set_text(_bleIcon, LV_SYMBOL_BLUETOOTH);
     lv_obj_add_flag(_bleIcon, LV_OBJ_FLAG_HIDDEN);
 
@@ -179,12 +179,12 @@ void StatusBar::create(lv_obj_t* parent) {
     _lblBatt = lv_label_create(_bar);
     lv_label_set_recolor(_lblBatt, true);   // recolor the charge bolt independently
     lv_obj_set_style_text_font(_lblBatt, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_lblBatt, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_lblBatt, theme::TEXT_PRIMARY(), 0);
 
     // Clock
     _lblTime = lv_label_create(_bar);
     lv_obj_set_style_text_font(_lblTime, FONT_SMALL, 0);
-    lv_obj_set_style_text_color(_lblTime, theme::TEXT_PRIMARY, 0);
+    lv_obj_set_style_text_color(_lblTime, theme::TEXT_PRIMARY(), 0);
 #endif
 
     updateSoundIcon();
@@ -219,7 +219,7 @@ void StatusBar::updateSoundIcon() {
         lv_label_set_text(_soundIcon, isMid ? LV_SYMBOL_VOLUME_MID : LV_SYMBOL_VOLUME_MAX);
     }
     lv_obj_set_style_text_color(_soundIcon,
-        muted ? theme::TEXT_SECONDARY : theme::TEXT_PRIMARY, 0);
+        muted ? theme::TEXT_SECONDARY() : theme::TEXT_PRIMARY(), 0);
 }
 
 void StatusBar::update() {
@@ -260,7 +260,7 @@ void StatusBar::update() {
         lv_label_set_text(_lblBatt, battIcon);
     }
     lv_obj_set_style_text_color(_lblBatt,
-        pct <= 20 ? theme::BATTERY_LOW : theme::TEXT_PRIMARY, 0);
+        pct <= 20 ? theme::BATTERY_LOW() : theme::TEXT_PRIMARY(), 0);
 
     // WiFi icon — visible only while connected. Green when a companion client is
     // attached (actively bridging), blue when connected for WiFi only.
@@ -270,7 +270,7 @@ void StatusBar::update() {
             // Green only when the WiFi transport is the one bridging a client
             // (not when USB companion is active).
             bool wifiBridging = comp.wifiCompanionEnabled() && comp.clientConnected();
-            lv_obj_set_style_text_color(_wifiIcon, wifiBridging ? theme::ONLINE_DOT : theme::ACCENT, 0);
+            lv_obj_set_style_text_color(_wifiIcon, wifiBridging ? theme::ONLINE_DOT() : theme::ACCENT(), 0);
         } else {
             lv_obj_add_flag(_wifiIcon, LV_OBJ_FLAG_HIDDEN);
         }
@@ -282,7 +282,7 @@ void StatusBar::update() {
         if (comp.bleCompanionEnabled()) {
             lv_obj_clear_flag(_bleIcon, LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_style_text_color(_bleIcon,
-                comp.clientConnected() ? theme::ONLINE_DOT : theme::ACCENT, 0);
+                comp.clientConnected() ? theme::ONLINE_DOT() : theme::ACCENT(), 0);
         } else {
             lv_obj_add_flag(_bleIcon, LV_OBJ_FLAG_HIDDEN);
         }
@@ -313,18 +313,18 @@ void StatusBar::update() {
         // general map stays reachable (tap still opens it — the map can center
         // on heard nodes' locations even without our own fix).
         lv_label_set_text(_gpsIcon, LV_SYMBOL_GPS);
-        lv_obj_set_style_text_color(_gpsIcon, theme::TEXT_TIMESTAMP, 0);
+        lv_obj_set_style_text_color(_gpsIcon, theme::TEXT_TIMESTAMP(), 0);
     } else {
         lv_label_set_text(_gpsIcon, LV_SYMBOL_GPS);
         switch (gps.fixStatus()) {
             case FixStatus::LIVE:
-                lv_obj_set_style_text_color(_gpsIcon, theme::ONLINE_DOT, 0);
+                lv_obj_set_style_text_color(_gpsIcon, theme::ONLINE_DOT(), 0);
                 break;
             case FixStatus::LAST_KNOWN:
-                lv_obj_set_style_text_color(_gpsIcon, theme::GPS_LAST_KNOWN, 0);
+                lv_obj_set_style_text_color(_gpsIcon, theme::GPS_LAST_KNOWN(), 0);
                 break;
             case FixStatus::NO_FIX:
-                lv_obj_set_style_text_color(_gpsIcon, theme::TEXT_SECONDARY, 0);
+                lv_obj_set_style_text_color(_gpsIcon, theme::TEXT_SECONDARY(), 0);
                 break;
         }
     }

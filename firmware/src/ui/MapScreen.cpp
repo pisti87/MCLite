@@ -57,11 +57,11 @@ static const char* mapTypeLetter(uint8_t type) {
 }
 static lv_color_t mapTypeColor(uint8_t type) {
     switch (type) {
-        case ADV_TYPE_CHAT:     return theme::ACCENT;
-        case ADV_TYPE_REPEATER: return theme::TEXT_PRIMARY;
-        case ADV_TYPE_ROOM:     return theme::ROOM_ACCENT;
-        case ADV_TYPE_SENSOR:   return theme::OFFGRID_ACCENT;
-        default:                return theme::TEXT_PRIMARY;
+        case ADV_TYPE_CHAT:     return theme::ACCENT();
+        case ADV_TYPE_REPEATER: return theme::TEXT_PRIMARY();
+        case ADV_TYPE_ROOM:     return theme::ROOM_ACCENT();
+        case ADV_TYPE_SENSOR:   return theme::OFFGRID_ACCENT();
+        default:                return theme::TEXT_PRIMARY();
     }
 }
 static const char* mapTypeWord(uint8_t type) {
@@ -308,10 +308,10 @@ void MapScreen::buildWidgets() {
     auto styleBtn = [](lv_obj_t* b) {
         lv_obj_set_size(b, MAP_BTN, MAP_BTN);
         lv_obj_set_style_radius(b, MAP_BTN / 2, 0);
-        lv_obj_set_style_bg_color(b, theme::BG_SECONDARY, 0);
+        lv_obj_set_style_bg_color(b, theme::BG_SECONDARY(), 0);
         lv_obj_set_style_bg_opa(b, LV_OPA_70, 0);
         lv_obj_set_style_border_width(b, 1, 0);
-        lv_obj_set_style_border_color(b, theme::TEXT_SECONDARY, 0);
+        lv_obj_set_style_border_color(b, theme::TEXT_SECONDARY(), 0);
         lv_obj_set_style_pad_all(b, 0, 0);
 #ifdef PLATFORM_TWATCH
         lv_obj_set_ext_click_area(b, 8);
@@ -320,7 +320,7 @@ void MapScreen::buildWidgets() {
 
     auto styleLbl = [](lv_obj_t* lbl) {
         lv_obj_set_style_text_font(lbl, MAP_BTN_FONT, 0);
-        lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY, 0);
+        lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY(), 0);
         lv_obj_center(lbl);
     };
 
@@ -394,8 +394,8 @@ void MapScreen::buildWidgets() {
     // Info label (bottom-left): zoom level + scale text.
     _infoLabel = lv_label_create(_screen);
     lv_obj_set_style_text_font(_infoLabel, FONT_BODY, 0);
-    lv_obj_set_style_text_color(_infoLabel, theme::TEXT_PRIMARY, 0);
-    lv_obj_set_style_bg_color(_infoLabel, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_text_color(_infoLabel, theme::TEXT_PRIMARY(), 0);
+    lv_obj_set_style_bg_color(_infoLabel, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_bg_opa(_infoLabel, LV_OPA_70, 0);
     lv_obj_set_style_pad_all(_infoLabel, 3, 0);
     lv_obj_align(_infoLabel, LV_ALIGN_BOTTOM_LEFT,
@@ -406,8 +406,8 @@ void MapScreen::buildWidgets() {
     // mode. Hidden until a marker is tapped; render() never overwrites it.
     _selLabel = lv_label_create(_screen);
     lv_obj_set_style_text_font(_selLabel, FONT_BODY, 0);
-    lv_obj_set_style_text_color(_selLabel, theme::TEXT_PRIMARY, 0);
-    lv_obj_set_style_bg_color(_selLabel, theme::BG_SECONDARY, 0);
+    lv_obj_set_style_text_color(_selLabel, theme::TEXT_PRIMARY(), 0);
+    lv_obj_set_style_bg_color(_selLabel, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_bg_opa(_selLabel, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(_selLabel, 4, 0);
     lv_obj_set_style_radius(_selLabel, 4, 0);
@@ -537,7 +537,7 @@ void MapScreen::drawHeardMarkers() {
         // marker is drawn a bit larger and wrapped in a bold ring.
         bool sel = _hasSel && memcmp(m.key, _selKey, 32) == 0;
         lv_color_t dotColor = (m.type == ADV_TYPE_CHAT)
-            ? (m.isContact ? theme::ACCENT : theme::TEXT_SECONDARY)
+            ? (m.isContact ? theme::ACCENT() : theme::TEXT_SECONDARY())
             : mapTypeColor(m.type);
         drawDot(_cbuf, CANVAS_W, CANVAS_H, px, py, sel ? 10 : 8, dotColor, lv_color_black());
 
@@ -572,7 +572,7 @@ void MapScreen::drawOwnMarker() {
     const int py = CANVAS_H / 2 + dy;
     if (px < -6 || px >= CANVAS_W + 6 || py < -6 || py >= CANVAS_H + 6) return;
 
-    lv_color_t c = (fs == FixStatus::LIVE) ? theme::ONLINE_DOT : theme::GPS_LAST_KNOWN;
+    lv_color_t c = (fs == FixStatus::LIVE) ? theme::ONLINE_DOT() : theme::GPS_LAST_KNOWN();
     drawDot(_cbuf, CANVAS_W, CANVAS_H, px, py, 4, c, lv_color_black());
 }
 
