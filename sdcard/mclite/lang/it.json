@@ -190,6 +190,7 @@
     "wifi_ble_reboot": "Riavvia per usare il WiFi (Bluetooth era attivo)",
     "map_no_tiles": "Nessuna mappa sulla SD",
     "map_no_locations": "Nessuna posizione ancora",
+    "map_title": "Mappa",
     "map_open": "Apri mappa",
     "map_shared_location": "Posizione condivisa",
 
