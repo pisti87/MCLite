@@ -177,6 +177,10 @@ void HeardAdvertsScreen::create(lv_obj_t* parent) {
     lv_obj_set_style_pad_all(cont, 0, 0);
     lv_obj_set_style_pad_row(cont, 1, 0);
     lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
+    // Center the CONTENT_WIDTH list so the T-Watch rounded-corner safe-area margin
+    // is split evenly (otherwise the list hugs the left edge). No-op on T-Deck
+    // where CONTENT_WIDTH is the full display width.
+    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     _list = lv_obj_create(cont);
     lv_obj_set_size(_list, theme::CONTENT_WIDTH, LV_SIZE_CONTENT);
