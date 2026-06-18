@@ -190,6 +190,10 @@ void HeardAdvertsScreen::create(lv_obj_t* parent) {
     lv_obj_set_style_pad_all(_list, 0, 0);
     lv_obj_set_style_pad_row(_list, 1, 0);
     lv_obj_set_flex_flow(_list, LV_FLEX_FLOW_COLUMN);
+    // Center rows within the list. Rows are CONTENT_WIDTH - PAD_SMALL (narrower to
+    // clear the scrollbar); without this they left-anchor and look shifted left of
+    // the header on both boards.
+    lv_obj_set_flex_align(_list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_add_flag(_list, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scroll_dir(_list, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(_list, LV_SCROLLBAR_MODE_AUTO);
@@ -253,16 +257,16 @@ void HeardAdvertsScreen::rebuild() {
     bool    hadFocus = false;
     if (grp) {
         lv_obj_t* focused = lv_group_get_focused(grp);
+        // The focused object is a row's info/map button (a child of a list row),
+        // so walk up to the row (a direct child of _list) and read its slot.
         if (focused) {
-            uint32_t cnt = lv_obj_get_child_cnt(_list);
-            for (uint32_t i = 0; i < cnt; i++) {
-                if (lv_obj_get_child(_list, i) == focused) {
-                    int slot = (int)(intptr_t)lv_obj_get_user_data(focused);
-                    if (slot >= 0 && slot < cache.count()) {
-                        memcpy(focusedKey, cache.entries()[slot].pubKey, 32);
-                        hadFocus = true;
-                    }
-                    break;
+            lv_obj_t* row = focused;
+            while (row && lv_obj_get_parent(row) != _list) row = lv_obj_get_parent(row);
+            if (row && lv_obj_get_parent(row) == _list) {
+                int slot = (int)(intptr_t)lv_obj_get_user_data(row);
+                if (slot >= 0 && slot < cache.count()) {
+                    memcpy(focusedKey, cache.entries()[slot].pubKey, 32);
+                    hadFocus = true;
                 }
             }
         }
@@ -330,6 +334,9 @@ void HeardAdvertsScreen::rebuild() {
         lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        // Gap between flex items so the per-row info/map buttons don't abut (their
+        // expanded click areas below stay separable — esp. for touch on T-Watch).
+        lv_obj_set_style_pad_column(row, theme::PAD_MEDIUM, 0);
 
         // Stash the slot index in user_data (no allocation, no delete cleanup needed)
         lv_obj_set_user_data(row, (void*)(intptr_t)slot);
@@ -396,6 +403,7 @@ void HeardAdvertsScreen::rebuild() {
         // Info button — opens the detail dialog
         lv_obj_t* infoBtn = lv_btn_create(row);
         lv_obj_set_size(infoBtn, theme::BTN_HEADER_ICON_H, theme::BTN_HEADER_ICON_H);
+        lv_obj_set_ext_click_area(infoBtn, theme::PAD_SMALL);   // bigger touch target
         lv_obj_set_style_bg_opa(infoBtn, LV_OPA_TRANSP, 0);
         lv_obj_set_style_shadow_width(infoBtn, 0, 0);
         lv_obj_set_style_border_width(infoBtn, 0, 0);
@@ -417,6 +425,7 @@ void HeardAdvertsScreen::rebuild() {
         if (e.hasGps) {
             lv_obj_t* mapBtn = lv_btn_create(row);
             lv_obj_set_size(mapBtn, theme::BTN_HEADER_ICON_H, theme::BTN_HEADER_ICON_H);
+            lv_obj_set_ext_click_area(mapBtn, theme::PAD_SMALL);   // bigger touch target
             lv_obj_set_style_bg_opa(mapBtn, LV_OPA_TRANSP, 0);
             lv_obj_set_style_shadow_width(mapBtn, 0, 0);
             lv_obj_set_style_border_width(mapBtn, 0, 0);
@@ -445,7 +454,19 @@ void HeardAdvertsScreen::rebuild() {
         lv_group_add_obj(grp, _advertBtn);
         lv_group_add_obj(grp, _localBtn);
 
-        // Restore focus by pubkey if possible; otherwise top row, otherwise back button
+        // Focus a row's first button (its info button) — the rows themselves
+        // aren't group members, so focusing a row is a no-op and leaves the
+        // trackball with no starting point until something is tapped.
+        auto firstRowBtn = [](lv_obj_t* row) -> lv_obj_t* {
+            uint32_t n = lv_obj_get_child_cnt(row);
+            for (uint32_t i = 0; i < n; i++) {
+                lv_obj_t* c = lv_obj_get_child(row, i);
+                if (lv_obj_has_flag(c, LV_OBJ_FLAG_CLICKABLE)) return c;  // the info/map buttons
+            }
+            return nullptr;
+        };
+
+        // Restore focus by pubkey if possible; otherwise the first row, otherwise back.
         bool restored = false;
         if (hadFocus) {
             uint32_t cnt = lv_obj_get_child_cnt(_list);
@@ -454,19 +475,20 @@ void HeardAdvertsScreen::rebuild() {
                 int slot = (int)(intptr_t)lv_obj_get_user_data(child);
                 if (slot >= 0 && slot < cache.count() &&
                     memcmp(cache.entries()[slot].pubKey, focusedKey, 32) == 0) {
-                    lv_group_focus_obj(child);
-                    lv_obj_scroll_to_view(child, LV_ANIM_OFF);
-                    restored = true;
+                    lv_obj_t* btn = firstRowBtn(child);
+                    if (btn) {
+                        lv_group_focus_obj(btn);
+                        lv_obj_scroll_to_view(child, LV_ANIM_OFF);
+                        restored = true;
+                    }
                     break;
                 }
             }
         }
         if (!restored) {
-            if (lv_obj_get_child_cnt(_list) > 0) {
-                lv_group_focus_obj(lv_obj_get_child(_list, 0));
-            } else {
-                lv_group_focus_obj(_backBtn);
-            }
+            lv_obj_t* btn = lv_obj_get_child_cnt(_list) > 0
+                ? firstRowBtn(lv_obj_get_child(_list, 0)) : nullptr;
+            lv_group_focus_obj(btn ? btn : _backBtn);
         }
     }
 }
