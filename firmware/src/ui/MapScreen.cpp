@@ -952,12 +952,20 @@ void MapScreen::recenter() {
 }
 
 void MapScreen::hitTestMarker(const lv_point_t& p) {
-    if (!_selLabel) return;
+    if (!_selLabel || !_canvas) return;
+    // markerScreenPos() returns canvas-local pixels, but `p` (from the indev) is
+    // in screen coordinates. Translate into canvas space before comparing — on
+    // T-Deck the canvas is offset by the status bar + window header; on T-Watch
+    // the canvas fills the screen so this is a no-op.
+    lv_area_t ca;
+    lv_obj_get_coords(_canvas, &ca);
+    const int tx = p.x - ca.x1;
+    const int ty = p.y - ca.y1;
     int best = -1, bestD2 = 20 * 20;   // tap tolerance (px²) — fingertip-friendly
     for (size_t i = 0; i < _markers.size(); i++) {
         int px, py;
         if (!markerScreenPos(_markers[i].lat, _markers[i].lon, px, py)) continue;
-        int d2 = (p.x - px) * (p.x - px) + (p.y - py) * (p.y - py);
+        int d2 = (tx - px) * (tx - px) + (ty - py) * (ty - py);
         if (d2 <= bestD2) { bestD2 = d2; best = (int)i; }
     }
     if (best < 0) {
