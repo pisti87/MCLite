@@ -22,6 +22,14 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
 - **Uptime + last-charged in the Admin Battery section.** Shows when the device booted (wall-clock + relative)
   and when charging last stopped (with the level at the time). Thanks [@jason-s13r](https://github.com/jason-s13r) (#23).
 
+### Added
+- **On-device Device Settings.** A new editable settings screen (Admin → Device Settings, behind the existing
+  `admin.enabled` gate) for changing device name, boot text, language, theme, security (lock mode / auto-lock /
+  PIN), sound (SOS keyword/repeat, low-battery alert), and display (brightness, auto-dim, keyboard backlight,
+  emoji, screenshots) directly on the device — no config-tool round-trip needed. Thanks [@jason-s13r](https://github.com/jason-s13r) (#27). The theme picker now lives here (removed from the read-only Admin info screen).
+- **Mention tag uses square brackets** — tapping a sender's name inserts `@[name]` so names with spaces stay
+  intact. Thanks [@jason-s13r](https://github.com/jason-s13r) (#26).
+
 ### Changed
 - **Auto GPS refresh now defaults off** (`messaging.auto_telemetry`). A fresh device no longer emits periodic
   telemetry requests on the mesh unless you opt in — quiet by default, matching the advert changes in 0.3.8.

@@ -24,17 +24,6 @@
 
 namespace mclite {
 
-namespace {
-// Friendly name for a theme: translated label for built-ins, raw name for custom.
-String themeDisplayName(const String& name) {
-    if (name == "dark")          return t("theme_dark");
-    if (name == "light")         return t("theme_light");
-    if (name == "amber")         return t("theme_amber");
-    if (name == "high_contrast") return t("theme_high_contrast");
-    return name;  // custom theme — show its own name
-}
-}  // namespace
-
 void AdminScreen::create(lv_obj_t* parent) {
     _screen = lv_win_create(parent, theme::CHAT_HEADER_HEIGHT);
     lv_obj_set_size(_screen, Display::width(),
@@ -458,36 +447,6 @@ void AdminScreen::show() {
 
     // --- Display ---
     addSection(t("sec_display"));
-
-    // Theme picker — clickable row; opens a chooser and reboots to apply.
-    {
-        lv_obj_t* row = lv_obj_create(_content);
-        lv_obj_set_size(row, LV_PCT(100), LV_SIZE_CONTENT);
-        lv_obj_set_style_bg_color(row, theme::BG_SECONDARY(), 0);
-        lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
-        lv_obj_set_style_border_width(row, 0, 0);
-        lv_obj_set_style_radius(row, 4, 0);
-        lv_obj_set_style_pad_all(row, theme::PAD_SMALL, 0);
-        lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
-        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_bg_color(row, theme::ACCENT(), LV_STATE_FOCUSED);
-        lv_obj_set_style_bg_opa(row, LV_OPA_40, LV_STATE_FOCUSED);
-        lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
-
-        lv_obj_t* lbl = lv_label_create(row);
-        lv_obj_set_style_text_font(lbl, FONT_BODY, 0);
-        lv_obj_set_style_text_color(lbl, theme::TEXT_SECONDARY(), 0);
-        lv_label_set_text(lbl, t("lbl_theme"));
-
-        lv_obj_t* val = lv_label_create(row);
-        lv_obj_set_style_text_font(val, FONT_BODY, 0);
-        lv_obj_set_style_text_color(val, theme::TEXT_PRIMARY(), 0);
-        lv_label_set_text(val, (themeDisplayName(cfg.display.theme) + "  " LV_SYMBOL_RIGHT).c_str());
-
-        lv_obj_add_event_cb(row, themeRowCb, LV_EVENT_CLICKED, this);
-    }
-
     addRow(t("lbl_brightness"), String(cfg.display.brightness));
     addRow(t("lbl_auto_dim"), cfg.display.autoDimSeconds > 0
         ? String(cfg.display.autoDimSeconds) + "s" : String(t("off")));
@@ -803,113 +762,8 @@ void AdminScreen::offgridToggleCb(lv_event_t* e) {
     }, LV_EVENT_VALUE_CHANGED, NULL);
 }
 
-// Theme chooser state. File-scope so the static event callbacks can reach it:
-// g_themeNames holds the canonical names parallel to the buttons (Cancel is the
-// last button, index == size); g_themeMap is the live btnmatrix map (must persist
-// while the matrix is alive); g_themeLabels keeps the label strings alive.
-namespace {
-std::vector<String>      g_themeNames;
-std::vector<String>      g_themeLabels;
-std::vector<const char*> g_themeMap;
-}  // namespace
-
-void AdminScreen::themeRowCb(lv_event_t* e) {
-    AdminScreen* self = (AdminScreen*)lv_event_get_user_data(e);
-    if (!self || self->_themeBtnm) return;   // already open
-    const auto& cfg = ConfigManager::instance().config();
-
-    // Available themes: built-ins first, then any custom names from config.
-    g_themeNames.clear(); g_themeLabels.clear(); g_themeMap.clear();
-    static const char* const BUILTIN[] = {"dark", "light", "amber", "high_contrast"};
-    for (const char* b : BUILTIN) g_themeNames.push_back(b);
-    for (const auto& ct : cfg.display.customThemes) g_themeNames.push_back(ct.name);
-
-    for (const auto& n : g_themeNames) g_themeLabels.push_back(themeDisplayName(n));
-    g_themeLabels.push_back(t("btn_cancel"));   // Cancel = last button
-
-    // One button per row: "\n" between labels (a column layout, like the canned
-    // picker). "\n" entries are not counted as buttons, so the selected index
-    // still maps to g_themeNames (Cancel index == g_themeNames.size()).
-    for (size_t i = 0; i < g_themeLabels.size(); i++) {
-        if (i > 0) g_themeMap.push_back("\n");
-        g_themeMap.push_back(g_themeLabels[i].c_str());
-    }
-    g_themeMap.push_back("");   // sentinel
-    int count = (int)g_themeLabels.size();
-
-    // Scrim overlay — tap to dismiss. Parented to the top layer (NOT the Admin
-    // screen): the Admin screen is an lv_win with a flex layout, so a child added
-    // there would be laid out as a flex item off-screen instead of floating.
-    self->_themeOverlay = lv_obj_create(lv_layer_top());
-    lv_obj_set_size(self->_themeOverlay, Display::width(), Display::height());
-    lv_obj_set_pos(self->_themeOverlay, 0, 0);
-    lv_obj_set_style_bg_color(self->_themeOverlay, theme::SCRIM(), 0);
-    lv_obj_set_style_bg_opa(self->_themeOverlay, LV_OPA_50, 0);
-    lv_obj_set_style_border_width(self->_themeOverlay, 0, 0);
-    lv_obj_clear_flag(self->_themeOverlay, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(self->_themeOverlay, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(self->_themeOverlay, [](lv_event_t* ev) {
-        AdminScreen* s = (AdminScreen*)lv_event_get_user_data(ev);
-        lv_async_call([](void* ctx) { ((AdminScreen*)ctx)->hideThemePicker(); }, s);
-    }, LV_EVENT_CLICKED, self);
-
-    // Button matrix — one theme per full-width row (top layer, above the win).
-    self->_themeBtnm = lv_btnmatrix_create(lv_layer_top());
-    lv_btnmatrix_set_map(self->_themeBtnm, g_themeMap.data());
-#ifdef PLATFORM_TWATCH
-    lv_coord_t rowH = 64;
-#else
-    lv_coord_t rowH = 26;
-#endif
-    lv_coord_t pickerH = count * rowH + 8;
-    lv_coord_t maxH = Display::height() - theme::STATUS_BAR_HEIGHT - theme::FOOTER_HEIGHT - 16;
-    if (pickerH > maxH) pickerH = maxH;
-    lv_obj_set_size(self->_themeBtnm, theme::MODAL_TEXT_WIDTH, pickerH);
-    lv_obj_align(self->_themeBtnm, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_text_font(self->_themeBtnm, FONT_HEADING, 0);
-    lv_obj_set_style_bg_color(self->_themeBtnm, theme::BG_SECONDARY(), 0);
-    lv_obj_set_style_bg_opa(self->_themeBtnm, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(self->_themeBtnm, theme::ACCENT(), 0);
-    lv_obj_set_style_border_width(self->_themeBtnm, 1, 0);
-    lv_obj_set_style_radius(self->_themeBtnm, 8, 0);
-    lv_obj_set_style_bg_color(self->_themeBtnm, theme::BG_INPUT(), LV_PART_ITEMS);
-    lv_obj_set_style_text_color(self->_themeBtnm, theme::TEXT_PRIMARY(), LV_PART_ITEMS);
-    lv_obj_set_style_radius(self->_themeBtnm, 4, LV_PART_ITEMS);
-    lv_obj_set_style_bg_color(self->_themeBtnm, theme::ACCENT(), LV_PART_ITEMS | LV_STATE_FOCUSED);
-    lv_obj_set_style_text_color(self->_themeBtnm, theme::TEXT_ON_ACCENT(), LV_PART_ITEMS | LV_STATE_FOCUSED);
-
-    lv_obj_add_event_cb(self->_themeBtnm, [](lv_event_t* ev) {
-        AdminScreen* s = (AdminScreen*)lv_event_get_user_data(ev);
-        uint16_t idx = lv_btnmatrix_get_selected_btn(s->_themeBtnm);
-        if (idx == LV_BTNMATRIX_BTN_NONE) return;
-
-        if (idx < g_themeNames.size()) {   // a theme (Cancel sits after them)
-            auto& mgr = ConfigManager::instance();
-            if (mgr.config().display.theme != g_themeNames[idx]) {
-                mgr.config().display.theme = g_themeNames[idx];
-                mgr.save();
-                delay(200);
-                ESP.restart();   // inline styles bake the color in → repaint via reboot
-                return;
-            }
-        }
-        // Cancel or same theme → just dismiss (async; can't delete mid-event).
-        lv_async_call([](void* ctx) { ((AdminScreen*)ctx)->hideThemePicker(); }, s);
-    }, LV_EVENT_VALUE_CHANGED, self);
-
-    UIManager::instance().switchToModalGroup(self->_themeBtnm);
-}
-
-void AdminScreen::hideThemePicker() {
-    if (!_themeBtnm) return;
-    UIManager::instance().restoreFromModalGroup();
-    lv_obj_del_async(_themeBtnm);    _themeBtnm = nullptr;
-    lv_obj_del_async(_themeOverlay); _themeOverlay = nullptr;
-}
-
 void AdminScreen::hide() {
     if (_screen) {
-        if (_themeBtnm) hideThemePicker();   // tear down an open picker first
         lv_group_t* grp = lv_group_get_default();
         if (grp) {
             lv_group_set_editing(grp, false);
