@@ -19,6 +19,11 @@ private:
     lv_obj_t* _content  = nullptr;
     lv_obj_t* _backBtn  = nullptr;
 
+    // Local input group for the open text editor (textarea + Save/Cancel). Owned
+    // here so it's freed on close — the editors create their own group separate
+    // from UIManager's modal group, which only manages the overlay.
+    lv_group_t* _editorGroup = nullptr;
+
     // Theme picker overlay (canned-message-style btnmatrix).
     lv_obj_t* _themeOverlay = nullptr;
     lv_obj_t* _themeBtnm    = nullptr;

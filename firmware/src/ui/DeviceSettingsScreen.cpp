@@ -962,6 +962,7 @@ void DeviceSettingsScreen::pinRowCb(lv_event_t* e) {
     lv_obj_center(cxlLbl);
 
     lv_group_t* g = lv_group_create();
+    self->_editorGroup = g;
     lv_group_add_obj(g, self->_pinTextarea);
     lv_group_add_obj(g, save);
     lv_group_add_obj(g, cancel);
@@ -1066,6 +1067,7 @@ void DeviceSettingsScreen::autoLockChosenCb(lv_event_t* e) {
 void DeviceSettingsScreen::hideLockModePicker() {
     if (!_lockModeBtnm) return;
     UIManager::instance().restoreFromModalGroup();
+    if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
     lv_obj_del_async(_lockModeBtnm);
     _lockModeBtnm = nullptr;
     if (_screen) show();
@@ -1074,6 +1076,7 @@ void DeviceSettingsScreen::hideLockModePicker() {
 void DeviceSettingsScreen::hideAutoLockPicker() {
     if (!_autoLockBtnm) return;
     UIManager::instance().restoreFromModalGroup();
+    if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
     lv_obj_del_async(_autoLockBtnm);
     _autoLockBtnm = nullptr;
     if (_screen) show();
@@ -1082,6 +1085,7 @@ void DeviceSettingsScreen::hideAutoLockPicker() {
 void DeviceSettingsScreen::hidePinEditor() {
     if (!_pinTextarea) return;
     UIManager::instance().restoreFromModalGroup();
+    if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
 #ifdef PLATFORM_TWATCH
     _pinKbd = nullptr;
 #endif
@@ -1101,7 +1105,12 @@ void DeviceSettingsScreen::soundToggleCb(lv_event_t* e) {
     Speaker::instance().setSoundEnabled(newVal);
     // Rebuild so the dependent SOS-repeat slider re-enables/disables reliably
     // (deferred: can't clean _content from inside this widget's own event).
-    if (self) lv_async_call([](void* p) { ((DeviceSettingsScreen*)p)->show(); }, self);
+    if (self) lv_async_call([](void* p) {
+        auto* s = (DeviceSettingsScreen*)p;
+        // Skip if we've since left the screen — a stale rebuild would re-grab the
+        // input group/focus from whatever screen is now showing.
+        if (s->_screen && !lv_obj_has_flag(s->_screen, LV_OBJ_FLAG_HIDDEN)) s->show();
+    }, self);
 }
 
 void DeviceSettingsScreen::lowAlertToggleCb(lv_event_t* e) {
@@ -1113,7 +1122,12 @@ void DeviceSettingsScreen::lowAlertToggleCb(lv_event_t* e) {
     g_dsDirty = true;
     // Rebuild so the threshold slider re-enables/disables reliably (deferred:
     // can't clean _content from inside this widget's own event).
-    if (self) lv_async_call([](void* p) { ((DeviceSettingsScreen*)p)->show(); }, self);
+    if (self) lv_async_call([](void* p) {
+        auto* s = (DeviceSettingsScreen*)p;
+        // Skip if we've since left the screen — a stale rebuild would re-grab the
+        // input group/focus from whatever screen is now showing.
+        if (s->_screen && !lv_obj_has_flag(s->_screen, LV_OBJ_FLAG_HIDDEN)) s->show();
+    }, self);
 }
 
 void DeviceSettingsScreen::sosKeywordReadyCb(lv_event_t* e) {
@@ -1196,6 +1210,7 @@ void DeviceSettingsScreen::sosKeywordRowCb(lv_event_t* e) {
     lv_obj_center(cxlLbl);
 
     lv_group_t* g = lv_group_create();
+    self->_editorGroup = g;
     lv_group_add_obj(g, self->_sosKeywordTextarea);
     lv_group_add_obj(g, save);
     lv_group_add_obj(g, cancel);
@@ -1226,6 +1241,7 @@ void DeviceSettingsScreen::sosKeywordRowCb(lv_event_t* e) {
 void DeviceSettingsScreen::hideSosKeywordEditor() {
     if (!_sosKeywordTextarea) return;
     UIManager::instance().restoreFromModalGroup();
+    if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
 #ifdef PLATFORM_TWATCH
     _sosKeywordKbd = nullptr;
 #endif
@@ -1315,6 +1331,7 @@ void DeviceSettingsScreen::themeRowCb(lv_event_t* e) {
 void DeviceSettingsScreen::hideThemePicker() {
     if (!_themeBtnm) return;
     UIManager::instance().restoreFromModalGroup();
+    if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
     lv_obj_del_async(_themeBtnm);    _themeBtnm = nullptr;
     lv_obj_del_async(_themeOverlay); _themeOverlay = nullptr;
     if (_screen) show();   // refresh so the row shows the newly selected theme
@@ -1323,6 +1340,7 @@ void DeviceSettingsScreen::hideThemePicker() {
 void DeviceSettingsScreen::hideNameEditor() {
     if (!_nameTextarea) return;
     UIManager::instance().restoreFromModalGroup();
+    if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
 #ifdef PLATFORM_TWATCH
     _nameKbd = nullptr;
 #endif
@@ -1418,6 +1436,7 @@ void DeviceSettingsScreen::bootTextRowCb(lv_event_t* e) {
     lv_obj_center(cxlLbl);
 
     lv_group_t* g = lv_group_create();
+    self->_editorGroup = g;
     lv_group_add_obj(g, self->_bootTextTextarea);
     lv_group_add_obj(g, save);
     lv_group_add_obj(g, cancel);
@@ -1448,6 +1467,7 @@ void DeviceSettingsScreen::bootTextRowCb(lv_event_t* e) {
 void DeviceSettingsScreen::hideBootTextEditor() {
     if (!_bootTextTextarea) return;
     UIManager::instance().restoreFromModalGroup();
+    if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
 #ifdef PLATFORM_TWATCH
     _bootTextKbd = nullptr;
 #endif
@@ -1460,6 +1480,7 @@ void DeviceSettingsScreen::hideBootTextEditor() {
 void DeviceSettingsScreen::hideLanguagePicker() {
     if (!_langBtnm) return;
     UIManager::instance().restoreFromModalGroup();
+    if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
     lv_obj_del_async(_langBtnm);    _langBtnm = nullptr;
     lv_obj_del_async(_langOverlay); _langOverlay = nullptr;
     if (_screen) show();   // refresh so the row shows the newly selected language
@@ -1551,6 +1572,7 @@ void DeviceSettingsScreen::nameRowCb(lv_event_t* e) {
     lv_obj_center(cxlLbl);
 
     lv_group_t* g = lv_group_create();
+    self->_editorGroup = g;
     lv_group_add_obj(g, self->_nameTextarea);
     lv_group_add_obj(g, save);
     lv_group_add_obj(g, cancel);
