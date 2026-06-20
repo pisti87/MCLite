@@ -106,6 +106,12 @@ lv_obj_t* DeviceSettingsScreen::createRowContainer(lv_obj_t* parent) {
 void DeviceSettingsScreen::show() {
     if (!_screen) return;
 
+    // Preserve the scroll position across a rebuild. show() doubles as the
+    // post-edit refresh (editors call it on close); without this the clean +
+    // re-focus of _content jumps the view (e.g. editing Boot Text scrolled the
+    // list to the Security section). Restored at the end, after the focus call.
+    lv_coord_t scrollY = lv_obj_get_scroll_y(_content);
+
     // Clear old content
     lv_obj_clean(_content);
 
@@ -735,6 +741,9 @@ void DeviceSettingsScreen::show() {
         lv_group_focus_obj(_content);
         lv_group_set_editing(grp, true);
     }
+
+    // Restore the pre-rebuild scroll position (after focus, so it wins).
+    lv_obj_scroll_to_y(_content, scrollY, LV_ANIM_OFF);
 
     lv_obj_clear_flag(_screen, LV_OBJ_FLAG_HIDDEN);
 }
