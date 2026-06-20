@@ -306,7 +306,9 @@ void DeviceSettingsScreen::show() {
 
         _autoDimSlider = lv_slider_create(row);
         lv_obj_set_width(_autoDimSlider, LV_PCT(40));
-        lv_slider_set_range(_autoDimSlider, 0, 3600);
+        // 0-300s (5 min) is the useful range; 0-3600 made the slider ~33 s/px so
+        // common values (e.g. 30s) were unhittable. Snapped to 5s in the callback.
+        lv_slider_set_range(_autoDimSlider, 0, 300);
         lv_slider_set_value(_autoDimSlider, cfg.display.autoDimSeconds, LV_ANIM_OFF);
         lv_obj_set_style_bg_color(_autoDimSlider, theme::ACCENT(), LV_PART_INDICATOR);
         lv_obj_set_style_bg_color(_autoDimSlider, theme::ACCENT(), LV_PART_KNOB);
@@ -1438,6 +1440,7 @@ void DeviceSettingsScreen::hideBootTextEditor() {
     _bootTextTextarea = nullptr;
     lv_obj_del_async(_bootTextOverlay);
     _bootTextOverlay = nullptr;
+    if (_screen) show();   // refresh the row so it shows the new value
 }
 
 void DeviceSettingsScreen::hideLanguagePicker() {
@@ -1682,6 +1685,8 @@ void DeviceSettingsScreen::inlineSliderChangedCb(lv_event_t* e) {
         lv_label_set_text(self->_brightnessValLbl, String(v).c_str());
         Display::instance().setBrightness((uint8_t)v);
     } else if (slider == self->_autoDimSlider) {
+        int32_t snapped = ((v + 2) / 5) * 5;   // snap to nearest 5s for clean values
+        if (snapped != v) { lv_slider_set_value(slider, snapped, LV_ANIM_OFF); v = snapped; }
         String txt = v > 0 ? (String(v) + "s") : String(t("off"));
         lv_label_set_text(self->_autoDimValLbl, txt.c_str());
     } else if (slider == self->_dimBrightnessSlider) {
