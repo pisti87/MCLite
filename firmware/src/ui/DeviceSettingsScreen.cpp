@@ -1736,6 +1736,8 @@ void DeviceSettingsScreen::inlineSliderChangedCb(lv_event_t* e) {
         String txt = v > 0 ? String(v) : String(t("off"));
         lv_label_set_text(self->_dimBrightnessValLbl, txt.c_str());
     } else if (slider == self->_kbdBrightnessSlider) {
+        v = snap5(v, 5);
+        lv_slider_set_value(slider, v, LV_ANIM_OFF);
         lv_label_set_text(self->_kbdBrightnessValLbl, String(v).c_str());
         IInput::instance().setBacklight((uint8_t)v);
     } else if (slider == self->_sosRepeatSlider) {

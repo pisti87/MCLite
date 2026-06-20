@@ -21,8 +21,6 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
   standard `lv_win` header with a back button (the T-Watch stays full-screen). Thanks [@jason-s13r](https://github.com/jason-s13r) (#22, supersedes #20/#21).
 - **Uptime + last-charged in the Admin Battery section.** Shows when the device booted (wall-clock + relative)
   and when charging last stopped (with the level at the time). Thanks [@jason-s13r](https://github.com/jason-s13r) (#23).
-
-### Added
 - **On-device Device Settings.** A new editable settings screen (Admin → Device Settings, behind the existing
   `admin.enabled` gate) for changing device name, boot text, language, theme, security (lock mode / auto-lock /
   PIN), sound (SOS keyword/repeat, low-battery alert), and display (brightness, auto-dim, keyboard backlight,
