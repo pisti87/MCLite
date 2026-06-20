@@ -834,7 +834,10 @@ void DeviceSettingsScreen::lockModeRowCb(lv_event_t* e) {
     lv_obj_set_style_bg_color(self->_lockModeBtnm, theme::ACCENT(), LV_PART_ITEMS | LV_STATE_FOCUSED);
     lv_obj_set_style_text_color(self->_lockModeBtnm, theme::TEXT_ON_ACCENT(), LV_PART_ITEMS | LV_STATE_FOCUSED);
 
-    lv_obj_add_event_cb(self->_lockModeBtnm, lockModeChosenCb, LV_EVENT_VALUE_CHANGED, self);
+    // CLICKED (not VALUE_CHANGED): fire on release so the close+rebuild happens
+    // after the touch ends (else the release leaks to the row underneath), and so
+    // trackball navigation doesn't select on every move.
+    lv_obj_add_event_cb(self->_lockModeBtnm, lockModeChosenCb, LV_EVENT_CLICKED, self);
     UIManager::instance().switchToModalGroup(self->_lockModeBtnm);
 }
 
@@ -881,7 +884,7 @@ void DeviceSettingsScreen::autoLockRowCb(lv_event_t* e) {
     lv_obj_set_style_bg_color(self->_autoLockBtnm, theme::ACCENT(), LV_PART_ITEMS | LV_STATE_FOCUSED);
     lv_obj_set_style_text_color(self->_autoLockBtnm, theme::TEXT_ON_ACCENT(), LV_PART_ITEMS | LV_STATE_FOCUSED);
 
-    lv_obj_add_event_cb(self->_autoLockBtnm, autoLockChosenCb, LV_EVENT_VALUE_CHANGED, self);
+    lv_obj_add_event_cb(self->_autoLockBtnm, autoLockChosenCb, LV_EVENT_CLICKED, self);  // see lockModeRowCb
     UIManager::instance().switchToModalGroup(self->_autoLockBtnm);
 }
 
@@ -1080,16 +1083,9 @@ void DeviceSettingsScreen::soundToggleCb(lv_event_t* e) {
     mgr.config().soundEnabled = newVal;
     mgr.save();
     Speaker::instance().setSoundEnabled(newVal);
-    if (self) {
-        if (self->_sosRepeatSlider) {
-            if (newVal) lv_obj_clear_state(self->_sosRepeatSlider, LV_STATE_DISABLED);
-            else lv_obj_add_state(self->_sosRepeatSlider, LV_STATE_DISABLED);
-        }
-        if (self->_sosRepeatValLbl) {
-            if (newVal) lv_obj_clear_state(self->_sosRepeatValLbl, LV_STATE_DISABLED);
-            else lv_obj_add_state(self->_sosRepeatValLbl, LV_STATE_DISABLED);
-        }
-    }
+    // Rebuild so the dependent SOS-repeat slider re-enables/disables reliably
+    // (deferred: can't clean _content from inside this widget's own event).
+    if (self) lv_async_call([](void* p) { ((DeviceSettingsScreen*)p)->show(); }, self);
 }
 
 void DeviceSettingsScreen::lowAlertToggleCb(lv_event_t* e) {
@@ -1099,16 +1095,9 @@ void DeviceSettingsScreen::lowAlertToggleCb(lv_event_t* e) {
     bool newVal = lv_obj_has_state(sw, LV_STATE_CHECKED);
     mgr.config().battery.lowAlertEnabled = newVal;
     mgr.save();
-    if (self) {
-        if (self->_lowAlertSlider) {
-            if (newVal) lv_obj_clear_state(self->_lowAlertSlider, LV_STATE_DISABLED);
-            else lv_obj_add_state(self->_lowAlertSlider, LV_STATE_DISABLED);
-        }
-        if (self->_lowAlertValLbl) {
-            if (newVal) lv_obj_clear_state(self->_lowAlertValLbl, LV_STATE_DISABLED);
-            else lv_obj_add_state(self->_lowAlertValLbl, LV_STATE_DISABLED);
-        }
-    }
+    // Rebuild so the threshold slider re-enables/disables reliably (deferred:
+    // can't clean _content from inside this widget's own event).
+    if (self) lv_async_call([](void* p) { ((DeviceSettingsScreen*)p)->show(); }, self);
 }
 
 void DeviceSettingsScreen::sosKeywordReadyCb(lv_event_t* e) {
@@ -1303,7 +1292,7 @@ void DeviceSettingsScreen::themeRowCb(lv_event_t* e) {
             }
         }
         lv_async_call([](void* ctx) { ((DeviceSettingsScreen*)ctx)->hideThemePicker(); }, s);
-    }, LV_EVENT_VALUE_CHANGED, self);
+    }, LV_EVENT_CLICKED, self);   // CLICKED so trackball nav doesn't select; release can't leak through
 
     UIManager::instance().switchToModalGroup(self->_themeBtnm);
 }
@@ -1679,7 +1668,7 @@ void DeviceSettingsScreen::languageRowCb(lv_event_t* e) {
             }
         }
         lv_async_call([](void* ctx) { ((DeviceSettingsScreen*)ctx)->hideLanguagePicker(); }, s);
-    }, LV_EVENT_VALUE_CHANGED, self);
+    }, LV_EVENT_CLICKED, self);   // CLICKED so trackball nav doesn't select; release can't leak through
 
     UIManager::instance().switchToModalGroup(self->_langBtnm);
 }
@@ -1690,15 +1679,22 @@ void DeviceSettingsScreen::inlineSliderChangedCb(lv_event_t* e) {
     lv_obj_t* slider = lv_event_get_target(e);
     int32_t v = lv_slider_get_value(slider);
 
+    // Snap to the nearest 5 (clamped to each slider's min) so values land clean.
+    auto snap5 = [](int32_t x, int32_t lo) { int32_t s = ((x + 2) / 5) * 5; return s < lo ? lo : s; };
+
     if (slider == self->_brightnessSlider) {
+        v = snap5(v, 10);
+        lv_slider_set_value(slider, v, LV_ANIM_OFF);
         lv_label_set_text(self->_brightnessValLbl, String(v).c_str());
         Display::instance().setBrightness((uint8_t)v);
     } else if (slider == self->_autoDimSlider) {
-        int32_t snapped = ((v + 2) / 5) * 5;   // snap to nearest 5s for clean values
-        if (snapped != v) { lv_slider_set_value(slider, snapped, LV_ANIM_OFF); v = snapped; }
+        v = snap5(v, 0);
+        lv_slider_set_value(slider, v, LV_ANIM_OFF);
         String txt = v > 0 ? (String(v) + "s") : String(t("off"));
         lv_label_set_text(self->_autoDimValLbl, txt.c_str());
     } else if (slider == self->_dimBrightnessSlider) {
+        v = snap5(v, 0);
+        lv_slider_set_value(slider, v, LV_ANIM_OFF);
         String txt = v > 0 ? String(v) : String(t("off"));
         lv_label_set_text(self->_dimBrightnessValLbl, txt.c_str());
     } else if (slider == self->_kbdBrightnessSlider) {
@@ -1707,6 +1703,8 @@ void DeviceSettingsScreen::inlineSliderChangedCb(lv_event_t* e) {
     } else if (slider == self->_sosRepeatSlider) {
         lv_label_set_text(self->_sosRepeatValLbl, String(v).c_str());
     } else if (slider == self->_lowAlertSlider) {
+        v = snap5(v, 5);
+        lv_slider_set_value(slider, v, LV_ANIM_OFF);
         lv_label_set_text(self->_lowAlertValLbl, (String(v) + "%").c_str());
     }
 }
