@@ -5,7 +5,7 @@ All notable changes to MCLite are documented here. The format is loosely based o
 
 Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-watch-vX.Y.Z.bin`).
 
-## [Unreleased]
+## [0.3.9] — 2026-06-21
 
 ### Added
 - **Step-wise admin permissions.** Beyond the existing `security.admin_enabled` (global on/off for the Admin
