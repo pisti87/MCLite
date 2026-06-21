@@ -8,6 +8,7 @@
 #include "../util/ContactLocation.h"
 #include "../mesh/MeshManager.h"
 #include "../mesh/MCLiteMesh.h"
+#include "../mesh/ContactStore.h"
 #include "../util/slippy.h"
 #include "../hal/GPS.h"
 #include "../i18n/I18n.h"
@@ -122,7 +123,16 @@ void MapScreen::buildMarkers() {
     auto add = [&](double lat, double lon, uint8_t type, bool isContact,
                    const char* name, const uint8_t* key) {
         MapMarker m; m.lat = lat; m.lon = lon; m.type = type; m.isContact = isContact;
-        strncpy(m.name, name ? name : "", sizeof(m.name) - 1); m.name[sizeof(m.name) - 1] = 0;
+        // Prefer the locally-configured alias for known contacts. MeshCore
+        // overwrites a contact's name with the node's self-advertised name on
+        // every advert (BaseChatMesh::onAdvertRecv), so getContactByIdx()->name
+        // is NOT our alias — ContactStore keeps the alias and is advert-stable.
+        const char* disp = name;
+        if (isContact) {
+            Contact* sc = ContactStore::instance().findByPublicKey(key);
+            if (sc && sc->name.length()) disp = sc->name.c_str();
+        }
+        strncpy(m.name, disp ? disp : "", sizeof(m.name) - 1); m.name[sizeof(m.name) - 1] = 0;
         memcpy(m.key, key, 32);
         _markers.push_back(m);
     };
