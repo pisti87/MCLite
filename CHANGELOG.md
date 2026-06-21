@@ -5,6 +5,16 @@ All notable changes to MCLite are documented here. The format is loosely based o
 
 Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-watch-vX.Y.Z.bin`).
 
+## [Unreleased]
+
+### Fixed
+- **Configured aliases now display everywhere.** The map (global + contact-focused) and the companion app's
+  contact/room list were showing each node's *self-advertised* name instead of your configured alias — MeshCore
+  overwrites a contact's stored name with the advertised one on every advert received. The map now resolves
+  marker names from the local contact store (advert-stable alias), and the companion contact frames send the
+  configured alias for contacts and the configured name for room servers (matched by pubkey). Heard-but-not-
+  configured nodes still show their advertised name. (Companion aliases refresh on the next full contact sync.)
+
 ## [0.3.9] — 2026-06-21
 
 ### Added
