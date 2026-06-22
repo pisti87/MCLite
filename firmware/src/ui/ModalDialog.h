@@ -19,8 +19,12 @@ public:
     // keep it up). Safe to call close() from inside cb.
     using Callback = std::function<void(lv_obj_t* dlg, int idx)>;
 
+    // smallTail (optional): extra text rendered below the body in a smaller,
+    // secondary-color font inside the same scrollable area — used for raw
+    // public keys so they stay compact and don't dominate the dialog.
     static lv_obj_t* show(const String& title, const String& body,
-                          const std::vector<String>& buttons, Callback cb);
+                          const std::vector<String>& buttons, Callback cb,
+                          const String& smallTail = "");
     static void close(lv_obj_t* dlg);
     static void setBody(lv_obj_t* dlg, const String& body);  // update scrollable body text
 };

@@ -25,7 +25,8 @@ void dlgBtnCb(lv_event_t* e) {
 }  // namespace
 
 lv_obj_t* ModalDialog::show(const String& title, const String& body,
-                            const std::vector<String>& buttons, Callback cb) {
+                            const std::vector<String>& buttons, Callback cb,
+                            const String& smallTail) {
     DlgCtx* ctx = new DlgCtx();
     ctx->cb = cb;
 
@@ -67,7 +68,7 @@ lv_obj_t* ModalDialog::show(const String& title, const String& body,
         lv_label_set_text(lbl, title.c_str());
     }
 
-    if (body.length()) {
+    if (body.length() || smallTail.length()) {
         // Scrollable container so long bodies (telemetry/advert detail) fit.
         lv_obj_t* bc = lv_obj_create(panel);
         lv_obj_set_width(bc, LV_PCT(100));
@@ -76,14 +77,28 @@ lv_obj_t* ModalDialog::show(const String& title, const String& body,
         lv_obj_set_style_bg_opa(bc, LV_OPA_TRANSP, 0);
         lv_obj_set_style_border_width(bc, 0, 0);
         lv_obj_set_style_pad_all(bc, 0, 0);
+        lv_obj_set_style_pad_row(bc, theme::PAD_SMALL, 0);
+        lv_obj_set_flex_flow(bc, LV_FLEX_FLOW_COLUMN);
         lv_obj_set_scroll_dir(bc, LV_DIR_VER);
         lv_obj_set_scrollbar_mode(bc, LV_SCROLLBAR_MODE_AUTO);
-        ctx->body = lv_label_create(bc);
-        lv_obj_set_width(ctx->body, LV_PCT(100));
-        lv_label_set_long_mode(ctx->body, LV_LABEL_LONG_WRAP);
-        lv_obj_set_style_text_font(ctx->body, FONT_NORMAL, 0);
-        lv_obj_set_style_text_color(ctx->body, theme::TEXT_PRIMARY(), 0);
-        lv_label_set_text(ctx->body, body.c_str());
+        if (body.length()) {
+            ctx->body = lv_label_create(bc);
+            lv_obj_set_width(ctx->body, LV_PCT(100));
+            lv_label_set_long_mode(ctx->body, LV_LABEL_LONG_WRAP);
+            lv_obj_set_style_text_font(ctx->body, FONT_NORMAL, 0);
+            lv_obj_set_style_text_color(ctx->body, theme::TEXT_PRIMARY(), 0);
+            lv_label_set_text(ctx->body, body.c_str());
+        }
+        if (smallTail.length()) {
+            // Smaller, secondary-color tail (raw public keys) so they stay compact.
+            lv_obj_t* tail = lv_label_create(bc);
+            lv_obj_set_width(tail, LV_PCT(100));
+            lv_label_set_long_mode(tail, LV_LABEL_LONG_WRAP);
+            lv_obj_set_style_text_font(tail, FONT_BODY, 0);
+            lv_obj_set_style_text_color(tail, theme::TEXT_SECONDARY(), 0);
+            lv_obj_set_style_text_line_space(tail, 2, 0);
+            lv_label_set_text(tail, smallTail.c_str());
+        }
     }
 
     ctx->group = lv_group_create();

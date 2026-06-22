@@ -582,18 +582,17 @@ void HeardAdvertsScreen::openDetail(int slotIdx) {
             _detailText += t("heard_buffer_full");
         }
     }
-    // Key block folded into the (scrollable) body.
-    _detailText += "\n\n";
-    _detailText += t("heard_key_label");
-    _detailText += "\n";
-    _detailText += formatKeyChunked(e.pubKey);
+    // Raw key goes in the small-font tail (secondary color) so it stays compact.
+    String keyText = t("heard_key_label");
+    keyText += "\n";
+    keyText += formatKeyChunked(e.pubKey);
 
     std::vector<String> btns;
     if (_detailMode == DETAIL_SAVABLE) btns = { t("heard_btn_save"), "OK" };
     else                               btns = { "OK" };
 
     _detailMsgbox = ModalDialog::show(t("heard_adverts_title"), _detailText, btns,
-        [this](lv_obj_t* dlg, int idx) { onDetailChoice(dlg, idx); });
+        [this](lv_obj_t* dlg, int idx) { onDetailChoice(dlg, idx); }, keyText);
 }
 
 void HeardAdvertsScreen::closeDetail() {
