@@ -54,7 +54,7 @@ That's it. Full walkthrough — including updates and companion mode — in [Get
 - **Battery alerts** -- automatic low-battery warnings sent to your contacts
 - **GPS location sharing** -- manually send your position in lat/lon or UTMREF/MGRS (military grid) format, used by search and rescue worldwide. Last-known position support when GPS signal is temporarily lost. Optionally **broadcast your location in adverts** (`location_precision`, off by default) so contacts see you on their map -- with a **privacy precision** setting (exact, or coarsened to a ~100 m / ~750 m / ~3 km / ~12 km / ~50 km grid). Note adverts are unencrypted and reach everyone in range; targeted per-contact telemetry replies and the in-chat GPS insert always use your exact position
 - **Telemetry** -- responds to MeshCore-standard telemetry requests (battery, GPS) with per-contact permissions. Compatible with MeshCore companion apps. Optionally request telemetry from contacts to see their battery, location, and distance
-- **Map view** -- visualise positions on a slippy map (optional, requires tile pack on SD card). Tap a contact's name in chat for their position, or tap the **status-bar GPS icon** for the general map: your own location plus markers for every heard node / contact that carries GPS (same chat / repeater / room / sensor symbols as the heard-adverts list). Tap a marker for its name, drag to pan, zoomable, with Center and Reload buttons
+- **Map view** -- visualise positions on a slippy map (optional, requires tile pack on SD card). Tap the **map button** in a chat header for that contact's position (shown once the contact is located), or tap the **status-bar GPS icon** for the general map: your own location plus markers for every heard node / contact that carries GPS (same chat / repeater / room / sensor symbols as the heard-adverts list). Tap a marker for its name, drag to pan, zoomable, with Center and Reload buttons
 - **Message history** -- conversations saved to SD card and restored on reboot
 - **Quick replies** -- optional canned message picker for fast responses (OK, Copy, Need help, etc.), translatable and customizable; per-conversation override lists turn a contact/channel/room into a command menu (e.g. a Home Assistant bridge)
 - **Themes** -- selectable UI color palettes: **Dark** (default), **Light**, **Amber** (a "military" night mode that preserves night vision), and **High contrast**. Switch on-device (Admin -> Theme, reboots to apply) or set `display.theme` in config. You can also define your own palettes under `display.themes` -- start from a built-in `base` and override any color with a `#RRGGBB` value
@@ -276,7 +276,7 @@ To set up a group: use **Fleet Mode** in the Setup Wizard. Add a device for each
     "max_history_per_chat": 100,       // Max messages stored per conversation
     "location_format": "decimal",       // "decimal" = lat/lon, "mgrs" = UTMREF/MGRS, "both"
     "max_retries": 3,                  // DM delivery retry attempts (1-5)
-    "request_telemetry": true,         // Tap contact name to see battery/location (optional)
+    "request_telemetry": true,         // Telemetry button in a chat shows battery/location (optional)
     "show_telemetry": "both",          // Badges on convo list: "battery", "location", "both", "none"
     "auto_telemetry": false,           // Auto-refresh GPS of contacts who don't broadcast it, to keep map
                                        //   markers fresh. Throttled + self-limiting (backs off non-responders). Opt-in, off by default.
@@ -320,7 +320,7 @@ You don't need to write this by hand -- use the Config Tool. This example shows 
 
 ### Map tiles (optional)
 
-If you want a visual map view when tapping a contact's name in chat (Telemetry → **Map**), copy slippy map tiles to `/tiles/` on the SD card root:
+If you want a visual map view (the **map button** in a chat header, or a contact's telemetry pop-up → **Map**), copy slippy map tiles to `/tiles/` on the SD card root:
 
 ```
 /tiles/<zoom>/<x>/<y>.png    (256×256 PNG, Web Mercator / EPSG:3857)
@@ -345,7 +345,7 @@ The T-Deck Plus is keyboard + trackball driven; the T-Watch Ultra is touch drive
 | SOS broadcast | Hold trackball 6s | Hold lower (BOOT) button 6s |
 | Power off | Slide the power switch | Long-press upper (PWR) button |
 | Mute / unmute | Tap speaker icon in status bar | Same |
-| Contact telemetry | Tap contact name in chat header | Same |
+| Contact telemetry | Tap the telemetry (refresh) button in chat header | Same |
 | Retry failed message | Tap the X on a failed message | Same |
 | Quick reply | Tap the list icon (≡) by the text input | Same |
 | Screenshot (when `debug.screenshots` is on) | Shift + $ | Double-press upper (PWR) button |

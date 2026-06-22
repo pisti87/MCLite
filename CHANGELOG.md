@@ -21,6 +21,11 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
   heard) and updates live while the chat is open — it shows when an advert brings in a location and hides when a
   last-known fix ages out. Thanks [@jason-s13r](https://github.com/jason-s13r) (#30).
 
+### Changed
+- **Contact telemetry is now a header button, not the contact name.** Tapping the contact name in a DM chat no
+  longer opens the telemetry/info pop-up — use the **telemetry (refresh) button** in the chat header instead
+  (the name is now just the title). Part of the chat-header rework above (#30).
+
 ### Fixed
 - **Configured aliases now display everywhere.** The map (global + contact-focused) and the companion app's
   contact/room list were showing each node's *self-advertised* name instead of your configured alias — MeshCore
