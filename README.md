@@ -18,17 +18,16 @@ Most features below are optional. The primary goal is to keep things extremely s
 
 <table align="center">
   <tr>
-    <td align="center"><img src="docs/images/conversation-list.png" width="240" alt="Conversation list"><br><sub>Conversations</sub></td>
-    <td align="center"><img src="docs/images/chat-view.png" width="240" alt="Chat view with map / telemetry / share header buttons"><br><sub>Chat &mdash; map / telemetry / share</sub></td>
-    <td align="center"><img src="docs/images/chat-canned-messages.png" width="240" alt="Canned quick-reply picker"><br><sub>Canned quick replies</sub></td>
+    <td align="center"><img src="docs/images/conversation-list.png" width="200" alt="Conversation list"><br><sub>Conversations</sub></td>
+    <td align="center"><img src="docs/images/chat-view.png" width="200" alt="Chat view with map / telemetry / share header buttons"><br><sub>Chat &mdash; map / telemetry / share</sub></td>
+    <td align="center"><img src="docs/images/chat-canned-messages.png" width="200" alt="Canned quick-reply picker"><br><sub>Canned quick replies</sub></td>
+    <td align="center"><img src="docs/images/chat-emoji-picker.png" width="200" alt="Emoji picker"><br><sub>Emoji picker</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/images/chat-emoji-picker.png" width="240" alt="Emoji picker"><br><sub>Emoji picker</sub></td>
-    <td align="center"><img src="docs/images/heard-adverts.png" width="240" alt="Heard adverts list"><br><sub>Heard adverts</sub></td>
-    <td align="center"><img src="docs/images/admin-screen.png" width="240" alt="Admin hub"><br><sub>Admin hub</sub></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="3"><img src="docs/images/admin-contacts.png" width="240" alt="On-device contact management"><br><sub>On-device contact management</sub></td>
+    <td align="center"><img src="docs/images/heard-adverts.png" width="200" alt="Heard adverts list"><br><sub>Heard adverts</sub></td>
+    <td align="center"><img src="docs/images/map-view.png" width="200" alt="Map view with pan / zoom controls"><br><sub>Map view</sub></td>
+    <td align="center"><img src="docs/images/admin-screen.png" width="200" alt="Admin hub"><br><sub>Admin hub</sub></td>
+    <td align="center"><img src="docs/images/admin-contacts.png" width="200" alt="On-device contact management"><br><sub>Contact management</sub></td>
   </tr>
 </table>
 
