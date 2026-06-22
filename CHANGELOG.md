@@ -8,6 +8,12 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
 ## [Unreleased]
 
 ### Added
+- **More radio region presets + a roller picker.** The region preset list grew to 19 entries (EU/UK/CH,
+  US/Canada, several AU regions, Brazil, Czech Republic, EU 433, Netherlands, New Zealand, Portugal,
+  Switzerland, Vietnam, …), sourced from the MeshCore config API and kept in sync between the config tool and
+  firmware. On-device the Radio region picker is now a scrollable roller (instead of a button grid) that
+  pre-selects the current region. Importing a config whose radio settings don't match a preset round-trips as
+  "Custom" with the raw values preserved. Thanks [@jason-s13r](https://github.com/jason-s13r) (#29).
 - **Chat header action buttons (DM).** The chat screen moved to the standard windowed header (back · title ·
   buttons), and direct-message chats gain two header buttons: **Telemetry** (refresh) opens the
   battery/location/distance modal and requests fresh telemetry, and **Map** (GPS) opens the map centred on the
