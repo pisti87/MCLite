@@ -205,7 +205,7 @@ private:
     lv_obj_t*  _convoModalBtnm = nullptr;
     void openButtonModal(ConvoModal purpose);
     void hideButtonModal();
-    static void convoModalChosenCb(lv_event_t* e);
+    void onConvoModalChoice(lv_obj_t* dlg, int idx);
 
     void openConvoEditor(ConvoField f);  // build overlay, then setConvoField(f)
     void setConvoField(ConvoField f);    // retitle/clear textarea for the given step

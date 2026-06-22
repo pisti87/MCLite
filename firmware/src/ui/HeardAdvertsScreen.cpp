@@ -1,6 +1,7 @@
 #include "HeardAdvertsScreen.h"
 #include "util/log.h"
 #include "UIManager.h"
+#include "ModalDialog.h"
 #include "theme.h"
 #include "../config/ConfigManager.h"
 #include "../config/defaults.h"
@@ -581,65 +582,23 @@ void HeardAdvertsScreen::openDetail(int slotIdx) {
             _detailText += t("heard_buffer_full");
         }
     }
-    // (Key block is rendered as a separate, smaller-font label below.)
+    // Key block folded into the (scrollable) body.
+    _detailText += "\n\n";
+    _detailText += t("heard_key_label");
+    _detailText += "\n";
+    _detailText += formatKeyChunked(e.pubKey);
 
-    // Buttons depend on save state.
-    static const char* btns_savable[3] = { nullptr, nullptr, "" };
-    static const char* btns_info[2]    = { nullptr, "" };
-    const char** btns;
-    if (_detailMode == DETAIL_SAVABLE) {
-        btns_savable[0] = t("heard_btn_save");
-        btns_savable[1] = "OK";
-        btns = btns_savable;
-    } else {
-        btns_info[0] = "OK";
-        btns = btns_info;
-    }
+    std::vector<String> btns;
+    if (_detailMode == DETAIL_SAVABLE) btns = { t("heard_btn_save"), "OK" };
+    else                               btns = { "OK" };
 
-    _detailMsgbox = lv_msgbox_create(NULL, t("heard_adverts_title"),
-                                     _detailText.c_str(), btns, false);
-    lv_obj_center(_detailMsgbox);
-    lv_obj_set_width(_detailMsgbox, theme::MODAL_TEXT_WIDTH);
-    lv_obj_set_height(_detailMsgbox, LV_SIZE_CONTENT);
-    lv_obj_set_style_max_height(_detailMsgbox, 216, 0);
-    lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY(), 0);
-    lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY(), 0);
-    lv_obj_set_style_text_font(_detailMsgbox, FONT_HEADING, 0);
-
-    // Uniform vertical breathing room between every body line — matches the
-    // implicit gap between the title bar and the first body line.
-    lv_obj_t* body = lv_msgbox_get_text(_detailMsgbox);
-    if (body) lv_obj_set_style_text_line_space(body, 4, 0);
-
-    // Key block: separate label so we can use a smaller, dimmer font without
-    // affecting the human-readable fields above.
-    String keyText = t("heard_key_label");
-    keyText += "\n";
-    keyText += formatKeyChunked(e.pubKey);
-
-    lv_obj_t* keyLabel = lv_label_create(_detailMsgbox);
-    lv_obj_set_style_text_font(keyLabel, FONT_BODY, 0);
-    lv_obj_set_style_text_color(keyLabel, theme::TEXT_SECONDARY(), 0);
-    lv_obj_set_style_text_line_space(keyLabel, 2, 0);
-    lv_obj_set_style_pad_top(keyLabel, 2, 0);
-    lv_label_set_text(keyLabel, keyText.c_str());
-
-    // Insert the key label just before the button matrix. Look up the btnm's
-    // actual index instead of hardcoding 2 — robust against any future LVGL
-    // change to msgbox internal child layout.
-    lv_obj_t* btnm = lv_msgbox_get_btns(_detailMsgbox);
-    if (btnm) {
-        lv_obj_move_to_index(keyLabel, lv_obj_get_index(btnm));
-        UIManager::instance().switchToModalGroup(btnm);
-    }
-
-    lv_obj_add_event_cb(_detailMsgbox, detailBtnCb, LV_EVENT_VALUE_CHANGED, this);
+    _detailMsgbox = ModalDialog::show(t("heard_adverts_title"), _detailText, btns,
+        [this](lv_obj_t* dlg, int idx) { onDetailChoice(dlg, idx); });
 }
 
 void HeardAdvertsScreen::closeDetail() {
     if (!_detailMsgbox) return;
-    UIManager::instance().restoreFromModalGroup();
-    lv_msgbox_close(_detailMsgbox);
+    ModalDialog::close(_detailMsgbox);
     _detailMsgbox = nullptr;
     _detailText   = "";
     _detailSlot   = -1;
@@ -721,26 +680,17 @@ void HeardAdvertsScreen::mapBtnCb(lv_event_t* e) {
     UIManager::instance().openMapAt(advert.pubKey, advert.gpsLat / 1e6, advert.gpsLon / 1e6, name);
 }
 
-void HeardAdvertsScreen::detailBtnCb(lv_event_t* e) {
-    HeardAdvertsScreen* self = (HeardAdvertsScreen*)lv_event_get_user_data(e);
-    if (!self || !self->_detailMsgbox) return;
-    uint16_t btnIdx = lv_msgbox_get_active_btn(self->_detailMsgbox);
-    if (btnIdx == LV_BTNMATRIX_BTN_NONE) return;
-
-    // Dispatch by mode. Index 0 in 2-button modes is the action; the
-    // trailing button is always OK/close.
-    if (self->_detailMode == DETAIL_SAVABLE && btnIdx == 0) {
-        self->handleSave();
-        return;
-    }
-    if (self->_detailMode == DETAIL_SAVED && btnIdx == 0) {
-        // Reboot now. Mirrors AdminScreen::offgridToggleCb.
-        UIManager::instance().restoreFromModalGroup();
+void HeardAdvertsScreen::onDetailChoice(lv_obj_t* dlg, int idx) {
+    (void)dlg;
+    // Index 0 in 2-button modes is the action; the trailing button is OK/close.
+    if (_detailMode == DETAIL_SAVABLE && idx == 0) { handleSave(); return; }
+    if (_detailMode == DETAIL_SAVED && idx == 0) {  // Reboot now
+        closeDetail();
         delay(200);
         ESP.restart();
         return;
     }
-    self->closeDetail();
+    closeDetail();
 }
 
 void HeardAdvertsScreen::handleSave() {
@@ -790,44 +740,16 @@ void HeardAdvertsScreen::handleSave() {
 void HeardAdvertsScreen::showSimpleInfoModal(const char* msg) {
     _detailMode = DETAIL_INFO;
     _detailText = msg;
-
-    static const char* btns[2] = { "OK", "" };
-    _detailMsgbox = lv_msgbox_create(NULL, t("heard_adverts_title"),
-                                     _detailText.c_str(), btns, false);
-    lv_obj_center(_detailMsgbox);
-    lv_obj_set_width(_detailMsgbox, theme::MODAL_TEXT_WIDTH);
-    lv_obj_set_height(_detailMsgbox, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY(), 0);
-    lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY(), 0);
-    lv_obj_set_style_text_font(_detailMsgbox, FONT_HEADING, 0);
-
-    lv_obj_t* btnm = lv_msgbox_get_btns(_detailMsgbox);
-    if (btnm) UIManager::instance().switchToModalGroup(btnm);
-
-    lv_obj_add_event_cb(_detailMsgbox, detailBtnCb, LV_EVENT_VALUE_CHANGED, this);
+    _detailMsgbox = ModalDialog::show(t("heard_adverts_title"), _detailText, { "OK" },
+        [this](lv_obj_t* dlg, int idx) { onDetailChoice(dlg, idx); });
 }
 
 void HeardAdvertsScreen::showSavedConfirmation() {
     _detailMode = DETAIL_SAVED;
     _detailText = t("heard_saved_msg");
-
-    static const char* btns[3] = { nullptr, nullptr, "" };
-    btns[0] = t("heard_btn_reboot");
-    btns[1] = "OK";
-
-    _detailMsgbox = lv_msgbox_create(NULL, t("heard_adverts_title"),
-                                     _detailText.c_str(), btns, false);
-    lv_obj_center(_detailMsgbox);
-    lv_obj_set_width(_detailMsgbox, theme::MODAL_TEXT_WIDTH);
-    lv_obj_set_height(_detailMsgbox, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(_detailMsgbox, theme::BG_SECONDARY(), 0);
-    lv_obj_set_style_text_color(_detailMsgbox, theme::TEXT_PRIMARY(), 0);
-    lv_obj_set_style_text_font(_detailMsgbox, FONT_HEADING, 0);
-
-    lv_obj_t* btnm = lv_msgbox_get_btns(_detailMsgbox);
-    if (btnm) UIManager::instance().switchToModalGroup(btnm);
-
-    lv_obj_add_event_cb(_detailMsgbox, detailBtnCb, LV_EVENT_VALUE_CHANGED, this);
+    _detailMsgbox = ModalDialog::show(t("heard_adverts_title"), _detailText,
+        { t("heard_btn_reboot"), "OK" },
+        [this](lv_obj_t* dlg, int idx) { onDetailChoice(dlg, idx); });
 }
 
 }  // namespace mclite

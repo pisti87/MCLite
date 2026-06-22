@@ -171,7 +171,6 @@ private:
     bool checkSOS(const ConvoId& id, const Message& msg);
     void showSOSAlert(const ConvoId& id, const Message& msg);
     void dismissSOSAlert(bool sendReply);
-    static void sosButtonCb(lv_event_t* e);
 
     // Trackball hold thresholds (shared between key lock and SOS)
     static constexpr uint32_t KEY_LOCK_HOLD_MS = 1000;  // Key lock toggle after 1s
@@ -221,7 +220,6 @@ private:
     void showFirmwareInstallModal(const String& path, const String& version);
     void buildFwInstallModal();            // shared modal builder (uses _fwVersion)
     void doFirmwareInstall();
-    static void fwModalBtnCb(lv_event_t* e);
     static void fwProgressCb(uint8_t percent, void* user);          // flash phase
     static void fwDownloadProgressCb(uint8_t percent, void* user);  // download phase (WiFi)
 
@@ -231,13 +229,13 @@ private:
     String      _telemContactId;
     uint32_t    _telemTimeout = 0;
     bool        _telemPending = false;
-    const char* _telemBtns[4] = {nullptr, nullptr, nullptr, nullptr};
+    bool        _telemHasMap = false;  // tracks whether the Map button is shown (rebuild on change)
 
     void dismissTelemetryModal();
     void refreshChatMapButton();  // show chat header map button only if contact located
     bool evalCanMap(const uint8_t* pubKey) const;
-    void buildTelemetryMsgbox(bool canMap);  // (re)creates the msgbox widget
-    static void telemBtnCb(lv_event_t* e);
+    void buildTelemetryMsgbox(bool canMap);  // (re)creates the modal
+    void onTelemModalChoice(lv_obj_t* dlg, int idx);
 
     // Map screen state
     MapScreen _mapScreen;

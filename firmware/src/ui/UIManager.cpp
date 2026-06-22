@@ -1,6 +1,7 @@
 #include "UIManager.h"
 #include "util/log.h"
 #include "theme.h"
+#include "ModalDialog.h"
 #include "../mesh/MeshManager.h"
 #include "../mesh/ContactStore.h"
 #include "../mesh/ChannelStore.h"
@@ -215,7 +216,7 @@ void UIManager::update() {
         } else {
             _telemText = t("telem_no_response");
         }
-        lv_label_set_text(lv_msgbox_get_text(_telemMsgbox), _telemText.c_str());
+        ModalDialog::setBody(_telemMsgbox, _telemText);
     }
 
     // Periodic convo list refresh (update timestamps like "12s", "3m")
@@ -540,29 +541,14 @@ void UIManager::showSOSAlert(const ConvoId& id, const Message& msg) {
     snprintf(fromBuf, sizeof(fromBuf), t("sos_from"), msg.senderName.c_str());
     _sosAlertText = String(fromBuf) + "\n\n" + msg.text;
 
-    // Button labels — must persist (static)
-    static const char* btns[3];
-    btns[0] = t("btn_dismiss");
-    btns[1] = t("btn_sos_seen");
-    btns[2] = "";
+    // Shared modal widget; btn 0 = Dismiss (no reply), btn 1 = SOS seen (reply).
     String sosTitleStr = String(LV_SYMBOL_WARNING " ") + t("sos_alert_title");
-    _sosMsgbox = lv_msgbox_create(NULL, sosTitleStr.c_str(),
-                                  _sosAlertText.c_str(), btns, false);
-    lv_obj_center(_sosMsgbox);
-    lv_obj_set_width(_sosMsgbox, theme::MODAL_TEXT_WIDTH);
-
-    // Style: red border, high contrast
+    _sosMsgbox = ModalDialog::show(sosTitleStr, _sosAlertText,
+        { t("btn_dismiss"), t("btn_sos_seen") },
+        [this](lv_obj_t* dlg, int idx) { (void)dlg; dismissSOSAlert(idx == 1); });
+    // SOS keeps its distinctive red border over the shared styling.
     lv_obj_set_style_border_color(_sosMsgbox, theme::BATTERY_LOW(), 0);
     lv_obj_set_style_border_width(_sosMsgbox, 3, 0);
-    lv_obj_set_style_bg_color(_sosMsgbox, theme::BG_SECONDARY(), 0);
-    lv_obj_set_style_text_color(_sosMsgbox, theme::TEXT_PRIMARY(), 0);
-
-    // Switch trackball/keyboard to modal group so they can't navigate behind
-    lv_obj_t* btnmatrix = lv_msgbox_get_btns(_sosMsgbox);
-    if (btnmatrix) switchToModalGroup(btnmatrix);
-
-    // Button callback
-    lv_obj_add_event_cb(_sosMsgbox, sosButtonCb, LV_EVENT_VALUE_CHANGED, this);
 
     // Disengage key lock so user can respond without unlocking first.
     // PIN lock (_isLocked) stays engaged — don't bypass security.
@@ -584,17 +570,6 @@ void UIManager::showSOSAlert(const ConvoId& id, const Message& msg) {
     _lastActivity = millis();
 
     LOGF("[UI] SOS alert from %s\n", msg.senderName.c_str());
-}
-
-void UIManager::sosButtonCb(lv_event_t* e) {
-    UIManager* self = static_cast<UIManager*>(lv_event_get_user_data(e));
-    if (!self || !self->_sosMsgbox) return;
-
-    lv_obj_t* btnmatrix = lv_msgbox_get_btns(self->_sosMsgbox);
-    uint16_t btnIdx = lv_btnmatrix_get_selected_btn(btnmatrix);
-
-    // btn 0 = "Dismiss" (no reply), btn 1 = "SOS seen" (send reply)
-    self->dismissSOSAlert(btnIdx == 1);
 }
 
 void UIManager::dismissSOSAlert(bool sendReply) {
@@ -634,10 +609,9 @@ void UIManager::dismissSOSAlert(bool sendReply) {
         LOGLN("[UI] SOS reply sent");
     }
 
-    // Restore input group and close modal
+    // Close modal (restores input group internally)
     if (_sosMsgbox) {
-        restoreFromModalGroup();
-        lv_msgbox_close(_sosMsgbox);
+        ModalDialog::close(_sosMsgbox);
         _sosMsgbox = nullptr;
     }
 
@@ -1195,29 +1169,11 @@ void UIManager::sendSOSToAll() {
     // Show confirmation toast via a brief modal
     char confirmBuf[64];
     snprintf(confirmBuf, sizeof(confirmBuf), t("sos_sent"), sent);
-    static const char* sentBtns[2];
-    sentBtns[0] = t("btn_ok");
-    sentBtns[1] = "";
     String sentTitleStr = String(LV_SYMBOL_WARNING " ") + t("sos_sent_title");
-    lv_obj_t* msgbox = lv_msgbox_create(NULL, sentTitleStr.c_str(), confirmBuf, sentBtns, false);
-    lv_obj_set_width(msgbox, theme::MODAL_TEXT_WIDTH);
-    lv_obj_center(msgbox);
+    lv_obj_t* msgbox = ModalDialog::show(sentTitleStr, confirmBuf, { t("btn_ok") },
+        [](lv_obj_t* dlg, int) { ModalDialog::close(dlg); });
     lv_obj_set_style_border_color(msgbox, theme::BATTERY_LOW(), 0);
     lv_obj_set_style_border_width(msgbox, 2, 0);
-    lv_obj_set_style_bg_color(msgbox, theme::BG_SECONDARY(), 0);
-    lv_obj_set_style_text_color(msgbox, theme::TEXT_PRIMARY(), 0);
-    lv_obj_move_foreground(msgbox);
-
-    lv_obj_t* btnmatrix = lv_msgbox_get_btns(msgbox);
-    if (btnmatrix && _inputGroup) {
-        lv_group_add_obj(_inputGroup, btnmatrix);
-    }
-    lv_obj_add_event_cb(msgbox, [](lv_event_t* e) {
-        lv_obj_t* mbox = lv_event_get_current_target(e);
-        lv_obj_t* btns = lv_msgbox_get_btns(mbox);
-        if (btns) lv_group_remove_obj(btns);
-        lv_msgbox_close(mbox);
-    }, LV_EVENT_VALUE_CHANGED, nullptr);
 
     // Refresh chat view if open
     if (_currentScreen == Screen::CHAT) {
@@ -1606,62 +1562,12 @@ void UIManager::showTelemetryModal(const ConvoId& id) {
             _telemTimeout = millis() + estTimeout;
             if (!td) {
                 _telemText = t("telem_requesting");
-                lv_label_set_text(lv_msgbox_get_text(_telemMsgbox), _telemText.c_str());
+                ModalDialog::setBody(_telemMsgbox, _telemText);
             }
         }
     }
 
     LOGF("[UI] Telemetry modal shown for %s\n", contact->name.c_str());
-}
-
-void UIManager::telemBtnCb(lv_event_t* e) {
-    UIManager* self = static_cast<UIManager*>(lv_event_get_user_data(e));
-    if (!self || !self->_telemMsgbox) return;
-
-    uint16_t idx = lv_msgbox_get_active_btn(self->_telemMsgbox);
-
-    if (idx == 0) {
-        // Close
-        self->dismissTelemetryModal();
-    } else if (idx == 1) {
-        // Refresh — find contact and request
-        auto& contacts = ContactStore::instance();
-        for (size_t i = 0; i < contacts.count(); i++) {
-            const Contact* c = contacts.findByIndex(i);
-            if (c && c->shortId() == self->_telemContactId) {
-                uint32_t estTimeout = 0;
-                if (MeshManager::instance().requestTelemetry(i, estTimeout)) {
-                    self->_telemPending = true;
-                    self->_telemTimeout = millis() + estTimeout;
-                    self->_telemText = t("telem_requesting");
-                } else {
-                    self->_telemText = t("telem_send_failed");
-                }
-                lv_label_set_text(lv_msgbox_get_text(self->_telemMsgbox),
-                                  self->_telemText.c_str());
-                break;
-            }
-        }
-    } else if (idx == 2) {
-        // Map — find contact's cached location and launch MapScreen
-        auto& contacts = ContactStore::instance();
-        for (size_t i = 0; i < contacts.count(); i++) {
-            const Contact* c = contacts.findByIndex(i);
-            if (c && c->shortId() == self->_telemContactId) {
-                ContactLocation loc = bestKnownLocation(c->publicKey);
-                if (loc.valid) {
-                    self->_pendingMapLat  = loc.lat;
-                    self->_pendingMapLon  = loc.lon;
-                    self->_pendingMapName = c->name;
-                    memcpy(self->_pendingMapKey, c->publicKey, 32);
-                    self->_pendingMapHasKey = true;
-                    self->dismissTelemetryModal();
-                    lv_async_call(&UIManager::openMapAsync, self);
-                }
-                break;
-            }
-        }
-    }
 }
 
 void UIManager::openMapAsync(void* user) {
@@ -1718,41 +1624,61 @@ bool UIManager::evalCanMap(const uint8_t* pubKey) const {
 }
 
 void UIManager::buildTelemetryMsgbox(bool canMap) {
-    // Tear down any existing msgbox widget (but keep _telemText/_telemContactId).
-    if (_telemMsgbox) {
-        restoreFromModalGroup();
-        lv_msgbox_close(_telemMsgbox);
-        _telemMsgbox = nullptr;
-    }
+    if (_telemMsgbox) { ModalDialog::close(_telemMsgbox); _telemMsgbox = nullptr; }
 
-    _telemBtns[0] = t("btn_close");
-    _telemBtns[1] = t("btn_refresh");
-    if (canMap) { _telemBtns[2] = t("btn_map"); _telemBtns[3] = ""; }
-    else        { _telemBtns[2] = "";           _telemBtns[3] = nullptr; }
+    _telemHasMap = canMap;
+    std::vector<String> btns = { t("btn_close"), t("btn_refresh") };
+    if (canMap) btns.push_back(t("btn_map"));
 
     String title = String(LV_SYMBOL_EYE_OPEN " ") + t("telem_title");
-    _telemMsgbox = lv_msgbox_create(NULL, title.c_str(), _telemText.c_str(), _telemBtns, false);
-    lv_obj_center(_telemMsgbox);
-    lv_obj_set_width(_telemMsgbox, theme::MODAL_TEXT_WIDTH);
-    lv_obj_set_height(_telemMsgbox, LV_SIZE_CONTENT);
-    lv_obj_set_style_max_height(_telemMsgbox, 200, 0);
-    lv_obj_set_style_bg_color(_telemMsgbox, theme::BG_SECONDARY(), 0);
-    lv_obj_set_style_text_color(_telemMsgbox, theme::TEXT_PRIMARY(), 0);
-    lv_obj_set_style_text_font(_telemMsgbox, FONT_NORMAL, 0);
+    _telemMsgbox = ModalDialog::show(title, _telemText, btns,
+        [this](lv_obj_t* dlg, int idx) { onTelemModalChoice(dlg, idx); });
+}
 
-    lv_obj_t* content = lv_msgbox_get_text(_telemMsgbox);
-    if (content) {
-        lv_obj_t* contentParent = lv_obj_get_parent(content);
-        lv_obj_set_style_max_height(contentParent, 140, 0);
-        lv_obj_add_flag(contentParent, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_scroll_dir(contentParent, LV_DIR_VER);
-        lv_obj_set_scrollbar_mode(contentParent, LV_SCROLLBAR_MODE_AUTO);
+void UIManager::onTelemModalChoice(lv_obj_t* dlg, int idx) {
+    (void)dlg;
+    if (idx == 0) {  // Close
+        dismissTelemetryModal();
+        return;
     }
-
-    lv_obj_t* btnm = lv_msgbox_get_btns(_telemMsgbox);
-    if (btnm) switchToModalGroup(btnm);
-
-    lv_obj_add_event_cb(_telemMsgbox, telemBtnCb, LV_EVENT_VALUE_CHANGED, this);
+    if (idx == 1) {  // Refresh — request, keep modal open and update body
+        auto& contacts = ContactStore::instance();
+        for (size_t i = 0; i < contacts.count(); i++) {
+            const Contact* c = contacts.findByIndex(i);
+            if (c && c->shortId() == _telemContactId) {
+                uint32_t estTimeout = 0;
+                if (MeshManager::instance().requestTelemetry(i, estTimeout)) {
+                    _telemPending = true;
+                    _telemTimeout = millis() + estTimeout;
+                    _telemText = t("telem_requesting");
+                } else {
+                    _telemText = t("telem_send_failed");
+                }
+                ModalDialog::setBody(_telemMsgbox, _telemText);
+                break;
+            }
+        }
+        return;
+    }
+    if (idx == 2) {  // Map
+        auto& contacts = ContactStore::instance();
+        for (size_t i = 0; i < contacts.count(); i++) {
+            const Contact* c = contacts.findByIndex(i);
+            if (c && c->shortId() == _telemContactId) {
+                ContactLocation loc = bestKnownLocation(c->publicKey);
+                if (loc.valid) {
+                    _pendingMapLat  = loc.lat;
+                    _pendingMapLon  = loc.lon;
+                    _pendingMapName = c->name;
+                    memcpy(_pendingMapKey, c->publicKey, 32);
+                    _pendingMapHasKey = true;
+                    dismissTelemetryModal();
+                    lv_async_call(&UIManager::openMapAsync, this);
+                }
+                break;
+            }
+        }
+    }
 }
 
 void UIManager::updateTelemetryModal(const uint8_t* pubKey) {
@@ -1769,14 +1695,8 @@ void UIManager::updateTelemetryModal(const uint8_t* pubKey) {
             _telemPending = false;
 
             const bool canMap = evalCanMap(pubKey);
-            const bool hadMap = (_telemBtns[2] && _telemBtns[2][0] != '\0');
-            if (canMap != hadMap) {
-                // Button set changed — recreate the msgbox so layout is correct.
-                buildTelemetryMsgbox(canMap);
-            } else {
-                // Text-only update.
-                lv_label_set_text(lv_msgbox_get_text(_telemMsgbox), _telemText.c_str());
-            }
+            if (canMap != _telemHasMap) buildTelemetryMsgbox(canMap);  // button set changed
+            else                        ModalDialog::setBody(_telemMsgbox, _telemText);
             break;
         }
     }
@@ -1789,7 +1709,7 @@ void UIManager::updateTelemetryModal(const uint8_t* pubKey) {
 void UIManager::onTelemetryRetry(uint32_t newTimeoutMs) {
     if (!_telemMsgbox) return;
     _telemText = t("telem_retrying");
-    lv_label_set_text(lv_msgbox_get_text(_telemMsgbox), _telemText.c_str());
+    ModalDialog::setBody(_telemMsgbox, _telemText);
     _telemTimeout = millis() + newTimeoutMs;
     LOGF("[UI] Telemetry retrying, extended timeout to %ums\n", newTimeoutMs);
 }
@@ -1884,42 +1804,19 @@ void UIManager::buildFwInstallModal() {
     snprintf(bodyBuf, sizeof(bodyBuf), t("fw_update_body"),
              _fwVersion.c_str(), MCLITE_VERSION);
 
-    static const char* btns[3];
-    btns[0] = t("btn_cancel");
-    btns[1] = t("fw_install");
-    btns[2] = "";
-
-    lv_obj_t* msgbox = lv_msgbox_create(NULL, t("fw_update_title"), bodyBuf, btns, false);
-    lv_obj_center(msgbox);
-    lv_obj_set_width(msgbox, theme::MODAL_TEXT_WIDTH);
-    lv_obj_set_style_bg_color(msgbox, theme::BG_SECONDARY(), 0);
-    lv_obj_set_style_text_color(msgbox, theme::TEXT_PRIMARY(), 0);
-    lv_obj_set_style_text_font(msgbox, FONT_HEADING, 0);
-
-    lv_obj_t* btnm = lv_msgbox_get_btns(msgbox);
-    if (btnm) switchToModalGroup(btnm);
-
-    lv_obj_add_event_cb(msgbox, fwModalBtnCb, LV_EVENT_VALUE_CHANGED, this);
-}
-
-void UIManager::fwModalBtnCb(lv_event_t* e) {
-    lv_obj_t* mbox = lv_event_get_current_target(e);
-    uint16_t btnIdx = lv_msgbox_get_active_btn(mbox);
-    if (btnIdx == LV_BTNMATRIX_BTN_NONE) return;
-
-    UIManager& self = UIManager::instance();
-    self.restoreFromModalGroup();
-    lv_msgbox_close(mbox);
-
-    if (btnIdx == 1) {
-        self.doFirmwareInstall();        // Install
-    } else {
-        self._fwPromptDismissed = true;  // Abort — don't nag again this session
-        if (self._fwUrl.length()) {      // WiFi offer declined — drop the link
-            WiFiManager::instance().disconnect();
-            self._fwUrl = "";
-        }
-    }
+    ModalDialog::show(t("fw_update_title"), bodyBuf, { t("btn_cancel"), t("fw_install") },
+        [this](lv_obj_t* dlg, int idx) {
+            ModalDialog::close(dlg);
+            if (idx == 1) {
+                doFirmwareInstall();         // Install
+            } else {
+                _fwPromptDismissed = true;   // Abort — don't nag again this session
+                if (_fwUrl.length()) {       // WiFi offer declined — drop the link
+                    WiFiManager::instance().disconnect();
+                    _fwUrl = "";
+                }
+            }
+        });
 }
 
 void UIManager::fwProgressCb(uint8_t percent, void* user) {
@@ -2018,8 +1915,7 @@ void UIManager::checkForWiFiUpdateOnBoot() {
 void UIManager::dismissTelemetryModal() {
     if (!_telemMsgbox) return;
 
-    restoreFromModalGroup();
-    lv_msgbox_close(_telemMsgbox);
+    ModalDialog::close(_telemMsgbox);
     _telemMsgbox = nullptr;
     _telemText = "";
     _telemContactId = "";

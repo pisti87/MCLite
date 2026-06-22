@@ -47,7 +47,7 @@ private:
     static void localBtnCb(lv_event_t* e);
     static void infoBtnCb(lv_event_t* e);
     static void mapBtnCb(lv_event_t* e);
-    static void detailBtnCb(lv_event_t* e);
+    void onDetailChoice(lv_obj_t* dlg, int idx);
 
     uint32_t _lastAdvertTapMs = 0;  // simple tap rate-limit (avoid duty-cycle spam)
 };

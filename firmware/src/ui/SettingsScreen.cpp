@@ -21,6 +21,7 @@
 #include "../util/offgrid.h"
 #include "../util/locprecision.h"
 #include "../i18n/I18n.h"
+#include "ModalDialog.h"
 #include <esp_random.h>
 
 namespace mclite {
@@ -873,66 +874,25 @@ void SettingsScreen::openButtonModal(ConvoModal purpose) {
         default: return;
     }
 
-    // Panel: centered card at modal width, flex column (title + full-width buttons).
-    _convoModalBtnm = lv_obj_create(lv_layer_top());
-    lv_obj_set_size(_convoModalBtnm, theme::MODAL_TEXT_WIDTH, LV_SIZE_CONTENT);
-    lv_obj_align(_convoModalBtnm, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_bg_color(_convoModalBtnm, theme::BG_SECONDARY(), 0);
-    lv_obj_set_style_bg_opa(_convoModalBtnm, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(_convoModalBtnm, theme::ACCENT(), 0);
-    lv_obj_set_style_border_width(_convoModalBtnm, 1, 0);
-    lv_obj_set_style_radius(_convoModalBtnm, 8, 0);
-    lv_obj_set_style_pad_all(_convoModalBtnm, theme::PAD_MEDIUM, 0);
-    lv_obj_set_style_pad_row(_convoModalBtnm, theme::PAD_SMALL, 0);
-    lv_obj_set_flex_flow(_convoModalBtnm, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(_convoModalBtnm, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_clear_flag(_convoModalBtnm, LV_OBJ_FLAG_SCROLLABLE);
-
-    if (title.length()) {
-        lv_obj_t* lbl = lv_label_create(_convoModalBtnm);
-        lv_obj_set_width(lbl, LV_PCT(100));
-        lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
-        lv_obj_set_style_text_font(lbl, FONT_BODY, 0);
-        lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY(), 0);
-        lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
-        lv_label_set_text(lbl, title.c_str());
-    }
-
-    lv_group_t* g = lv_group_create();
-    _editorGroup = g;
-    for (size_t i = 0; i < g_btnModalLabels.size(); i++) {
-        lv_obj_t* b = lv_btn_create(_convoModalBtnm);
-        lv_obj_set_width(b, LV_PCT(100));
-        lv_obj_set_style_bg_color(b, theme::BG_INPUT(), 0);
-        lv_obj_set_style_bg_color(b, theme::ACCENT(), LV_STATE_FOCUSED);
-        lv_obj_set_user_data(b, (void*)(intptr_t)i);
-        lv_obj_add_event_cb(b, convoModalChosenCb, LV_EVENT_CLICKED, this);
-        lv_obj_t* lbl = lv_label_create(b);
-        lv_obj_set_style_text_font(lbl, FONT_HEADING, 0);
-        lv_label_set_text(lbl, g_btnModalLabels[i].c_str());
-        lv_obj_center(lbl);
-        lv_group_add_obj(g, b);
-    }
-    UIManager::instance().switchToModalGroup(_convoModalBtnm);
-    IInput::instance().attachToGroup(g);
+    _convoModalBtnm = ModalDialog::show(title, "", g_btnModalLabels,
+        [this](lv_obj_t* dlg, int idx) { onConvoModalChoice(dlg, idx); });
 }
 
 void SettingsScreen::hideButtonModal() {
     if (!_convoModalBtnm) return;
-    UIManager::instance().restoreFromModalGroup();
-    if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
-    lv_obj_del_async(_convoModalBtnm);
+    ModalDialog::close(_convoModalBtnm);
     _convoModalBtnm = nullptr;
     _convoModal = ConvoModal::None;
 }
 
-void SettingsScreen::convoModalChosenCb(lv_event_t* e) {
-    SettingsScreen* self = (SettingsScreen*)lv_event_get_user_data(e);
-    if (!self || !self->_convoModalBtnm) return;
-    size_t idx = (size_t)(intptr_t)lv_obj_get_user_data(lv_event_get_target(e));
-    ConvoModal purpose = self->_convoModal;
-    bool isContacts = (self->_section == SettingsSection::Contacts);
-    self->hideButtonModal();
+void SettingsScreen::onConvoModalChoice(lv_obj_t* dlg, int idxIn) {
+    SettingsScreen* self = this;
+    size_t idx = (size_t)idxIn;
+    ConvoModal purpose = _convoModal;
+    bool isContacts = (_section == SettingsSection::Contacts);
+    ModalDialog::close(dlg);
+    _convoModalBtnm = nullptr;
+    _convoModal = ConvoModal::None;
 
     if (purpose == ConvoModal::AddChooser) {
         if (isContacts) {
