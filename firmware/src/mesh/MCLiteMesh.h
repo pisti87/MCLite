@@ -221,7 +221,9 @@ private:
     void sendWithScope(const TransportKey& scope, mesh::Packet* pkt, uint32_t delay_millis);
 
     // ─── Advert-blob cache (backs contact sharing) ───
-    static constexpr size_t ADVERT_BLOB_MAX   = 192;   // raw advert packets sit well under this
+    // Sized to a full transport unit so a multi-hop advert (header + path + payload)
+    // is never rejected; shareContactZeroHop re-sends the raw packet verbatim.
+    static constexpr size_t ADVERT_BLOB_MAX   = MAX_TRANS_UNIT;
     static constexpr size_t ADVERT_BLOB_SLOTS = MAX_CONTACTS;
     struct AdvertBlob {
         uint8_t  key[PUB_KEY_SIZE] = {0};
