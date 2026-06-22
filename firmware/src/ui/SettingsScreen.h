@@ -197,6 +197,16 @@ private:
     String _convPendName;   // alias / channel name / room name carried between steps
     String _convPendKey;    // room public key carried between steps
     bool convoManageEnabled() const;     // permission + canEdit gate
+
+    // Vertical button-list modal (picker styling: MODAL_TEXT_WIDTH btnmatrix,
+    // one button per row) — replaces narrow side-by-side lv_msgbox dialogs.
+    enum class ConvoModal { None, AddChooser, DeleteConfirm, RebootConfirm };
+    ConvoModal _convoModal = ConvoModal::None;
+    lv_obj_t*  _convoModalBtnm = nullptr;
+    void openButtonModal(ConvoModal purpose);
+    void hideButtonModal();
+    static void convoModalChosenCb(lv_event_t* e);
+
     void openConvoEditor(ConvoField f);  // build overlay, then setConvoField(f)
     void setConvoField(ConvoField f);    // retitle/clear textarea for the given step
     void hideConvoEditor();
