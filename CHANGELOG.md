@@ -51,6 +51,9 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
   region and path-hash size are now both configurable from the app — the two settings a large 3-byte mesh needs.
   A public `#region` round-trips exactly (MCLite derives the same transport key MeshCore does); a custom/private key
   that isn't derivable from the name is refused.
+- **On-device contact/channel actions.** Tapping a contact in Admin now offers **Reset path** (force flood
+  rediscovery of the route) beside Delete; tapping a channel offers **Set scope** (edit that channel's own
+  region, blank = inherit the global one) beside Delete.
 - **Edit region and path-hash size on the device.** Admin → Radio now lets you change the **region/scope** and the
   **path-hash size** (1/2/3 bytes per hop) directly on-device (a roller for the size, a text editor for the region),
   gated by `permissions.settings = full`. Both apply on a quick reboot. Handy for matching a large 3-byte mesh

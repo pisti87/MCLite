@@ -280,5 +280,8 @@
     "err_save_failed": "Echec sauvegarde (SD)",
     "btn_delete": "Supprimer",
     "convo_del_title": "Supprimer entree",
-    "convo_del_confirm": "Supprimer %s ? Effet apres redemarrage."
+    "convo_del_confirm": "Supprimer %s ? Effet apres redemarrage.",
+    "convo_reset_path": "Reinitialiser chemin",
+    "convo_reset_done": "Chemin reinitialise",
+    "convo_set_scope": "Definir portee"
 }

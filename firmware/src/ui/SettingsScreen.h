@@ -68,14 +68,17 @@ private:
     static void nameRowCb(lv_event_t* e);
     static void nameReadyCb(lv_event_t* e);
 
-    // Radio region/scope editor overlay (mirrors the device-name editor)
+    // Region/scope editor overlay (mirrors the device-name editor). Target: -1 = global
+    // radio.scope; >=0 = that channel's per-channel scope.
     lv_obj_t* _scopeOverlay  = nullptr;
     lv_obj_t* _scopeTextarea = nullptr;
+    int        _scopeChannelIdx = -1;
 #ifdef PLATFORM_TWATCH
     lv_obj_t* _scopeKbd      = nullptr;
 #endif
+    void openScopeEditor();                  // builds the editor for the current _scopeChannelIdx
     void hideScopeEditor();
-    static void scopeRowCb(lv_event_t* e);
+    static void scopeRowCb(lv_event_t* e);   // global radio scope (Radio screen row)
     static void scopeReadyCb(lv_event_t* e);
 
     // Boot text editor overlay

@@ -211,6 +211,9 @@ const DefaultString DEFAULT_STRINGS[] = {
     {"btn_delete",          "Delete"},
     {"convo_del_title",     "Remove entry"},
     {"convo_del_confirm",   "Remove %s? Applies after reboot."},
+    {"convo_reset_path",    "Reset path"},
+    {"convo_reset_done",    "Path reset"},
+    {"convo_set_scope",     "Set scope"},
 
     // Offgrid mode (tap-to-toggle on admin screen)
     {"offgrid_off",              "OFF"},

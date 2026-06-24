@@ -366,6 +366,14 @@ void MeshManager::deleteAdvertBlob(const uint8_t* pubKey) {
     if (_mesh) _mesh->deleteAdvertBlob(pubKey);
 }
 
+bool MeshManager::resetPathByKey(const uint8_t* pubKey) {
+    if (!_mesh) return false;
+    ContactInfo* ci = _mesh->lookupContactByPubKey(pubKey, PUB_KEY_SIZE);
+    if (!ci) return false;
+    _mesh->resetPathTo(*ci);
+    return true;
+}
+
 bool MeshManager::sendAdvertNow(bool flood) {
     if (!_mesh || !_radioReady) return false;
     const auto& cfg = ConfigManager::instance().config();

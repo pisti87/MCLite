@@ -854,10 +854,15 @@ void SettingsScreen::openButtonModal(ConvoModal purpose) {
             if (_section == SettingsSection::Contacts && i < cfg.contacts.size())      name = cfg.contacts[i].alias;
             else if (_section == SettingsSection::Channels && i < cfg.channels.size())  name = cfg.channels[i].name;
             else if (_section == SettingsSection::Rooms && i < cfg.roomServers.size())  name = cfg.roomServers[i].name;
-            char buf[96]; snprintf(buf, sizeof(buf), t("convo_del_confirm"), name.c_str());
-            title = t("convo_del_title");
-            body  = buf;
-            g_btnModalLabels = { t("btn_delete"), t("btn_cancel") };
+            title = name;
+            // Row actions: an extra per-section action beside Delete (Reset Path for contacts,
+            // Set Scope for channels), then Delete, then Cancel.
+            if (_section == SettingsSection::Contacts)
+                g_btnModalLabels = { t("convo_reset_path"), t("btn_delete"), t("btn_cancel") };
+            else if (_section == SettingsSection::Channels)
+                g_btnModalLabels = { t("convo_set_scope"), t("btn_delete"), t("btn_cancel") };
+            else
+                g_btnModalLabels = { t("btn_delete"), t("btn_cancel") };
             break;
         }
         case ConvoModal::RebootConfirm:
@@ -923,9 +928,33 @@ void SettingsScreen::onConvoModalChoice(lv_obj_t* dlg, int idxIn) {
     }
 
     if (purpose == ConvoModal::DeleteConfirm) {
-        if (idx != 0) { lv_async_call([](void* p){ ((SettingsScreen*)p)->show(); }, self); return; }  // 0=Delete, 1=Cancel
         size_t i = (size_t)self->_convPendKey.toInt();
         auto& c = ConfigManager::instance().config();
+        const bool isContact = self->_section == SettingsSection::Contacts;
+        const bool isChannel = self->_section == SettingsSection::Channels;
+
+        // idx 0 is the per-section action (contacts/channels only); then Delete, then Cancel.
+        if (isContact && idx == 0) {                    // Reset Path
+            if (i < c.contacts.size()) {
+                String b64 = c.contacts[i].publicKey;
+                for (const auto& sc : ContactStore::instance().all())
+                    if (sc.publicKeyB64.equalsIgnoreCase(b64)) {
+                        if (MeshManager::instance().resetPathByKey(sc.publicKey))
+                            UIManager::instance().showToast(t("convo_reset_done"));
+                        break;
+                    }
+            }
+            lv_async_call([](void* p){ ((SettingsScreen*)p)->show(); }, self);
+            return;
+        }
+        if (isChannel && idx == 0) {                    // Set Scope (per-channel editor)
+            self->_scopeChannelIdx = (int)i;
+            lv_async_call([](void* p){ ((SettingsScreen*)p)->openScopeEditor(); }, self);
+            return;
+        }
+
+        size_t deleteIdx = (isContact || isChannel) ? 1 : 0;
+        if (idx != deleteIdx) { lv_async_call([](void* p){ ((SettingsScreen*)p)->show(); }, self); return; }  // Cancel
         bool ok = false;
         if (self->_section == SettingsSection::Contacts && i < c.contacts.size()) {
             String b64 = c.contacts[i].publicKey;
@@ -2400,46 +2429,65 @@ void SettingsScreen::scopeReadyCb(lv_event_t* e) {
     SettingsScreen* self = (SettingsScreen*)lv_event_get_user_data(e);
     if (!self || !self->_scopeTextarea) return;
     String s = convoTrim(String(lv_textarea_get_text(self->_scopeTextarea)));
-    if (s.length() == 0) s = "*";                 // blank == "*" == no scope
     auto& cfg = ConfigManager::instance().config();
-    if (cfg.radio.scope != s) {
-        cfg.radio.scope = s;
-        g_dsDirty = true;
-        g_dsReboot = true;                        // _globalScope re-derives at boot
-        UIManager::instance().showToast(t("theme_apply_body"));
+    int ch = self->_scopeChannelIdx;
+    if (ch < 0) {
+        // Global radio scope: blank == "*" == no scope.
+        if (s.length() == 0) s = "*";
+        if (cfg.radio.scope != s) {
+            cfg.radio.scope = s; g_dsDirty = true; g_dsReboot = true;
+            UIManager::instance().showToast(t("theme_apply_body"));
+        }
+    } else if ((size_t)ch < cfg.channels.size()) {
+        // Per-channel scope: blank == "" == inherit the global scope (not "*").
+        if (cfg.channels[ch].scope != s) {
+            cfg.channels[ch].scope = s; g_dsDirty = true; g_dsReboot = true;
+            UIManager::instance().showToast(t("theme_apply_body"));
+        }
     }
     lv_async_call([](void* p) { ((SettingsScreen*)p)->hideScopeEditor(); }, self);
 }
 
+// Radio-screen row → global scope.
 void SettingsScreen::scopeRowCb(lv_event_t* e) {
     SettingsScreen* self = (SettingsScreen*)lv_event_get_user_data(e);
-    if (!self || self->_scopeTextarea) return;
+    if (!self) return;
+    self->_scopeChannelIdx = -1;
+    self->openScopeEditor();
+}
+
+// Builds the scope editor for the current _scopeChannelIdx (-1 = global radio scope; else channel).
+void SettingsScreen::openScopeEditor() {
+    if (_scopeTextarea) return;
     const auto& cfg = ConfigManager::instance().config();
+    String preFill = (_scopeChannelIdx < 0)
+        ? cfg.radio.scope
+        : ((size_t)_scopeChannelIdx < cfg.channels.size() ? cfg.channels[_scopeChannelIdx].scope : String());
 
-    self->_scopeOverlay = lv_obj_create(lv_layer_top());
-    lv_obj_set_size(self->_scopeOverlay, Display::width(), Display::height());
-    lv_obj_set_pos(self->_scopeOverlay, 0, 0);
-    lv_obj_set_style_bg_color(self->_scopeOverlay, theme::BG_PRIMARY(), 0);
-    lv_obj_set_style_bg_opa(self->_scopeOverlay, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(self->_scopeOverlay, 0, 0);
-    lv_obj_clear_flag(self->_scopeOverlay, LV_OBJ_FLAG_SCROLLABLE);
+    _scopeOverlay = lv_obj_create(lv_layer_top());
+    lv_obj_set_size(_scopeOverlay, Display::width(), Display::height());
+    lv_obj_set_pos(_scopeOverlay, 0, 0);
+    lv_obj_set_style_bg_color(_scopeOverlay, theme::BG_PRIMARY(), 0);
+    lv_obj_set_style_bg_opa(_scopeOverlay, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(_scopeOverlay, 0, 0);
+    lv_obj_clear_flag(_scopeOverlay, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t* lbl = lv_label_create(self->_scopeOverlay);
+    lv_obj_t* lbl = lv_label_create(_scopeOverlay);
     lv_obj_set_style_text_font(lbl, FONT_HEADING, 0);
     lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY(), 0);
     lv_label_set_text(lbl, t("lbl_scope"));
     lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, theme::STATUS_BAR_HEIGHT);
 
-    self->_scopeTextarea = lv_textarea_create(self->_scopeOverlay);
-    lv_textarea_set_one_line(self->_scopeTextarea, true);
-    lv_textarea_set_max_length(self->_scopeTextarea, 31);
-    lv_textarea_set_placeholder_text(self->_scopeTextarea, t("scope_hint"));
-    lv_textarea_set_text(self->_scopeTextarea, cfg.radio.scope.c_str());
-    lv_obj_set_width(self->_scopeTextarea, theme::CONTENT_WIDTH);
-    lv_obj_align(self->_scopeTextarea, LV_ALIGN_TOP_MID, 0, theme::STATUS_BAR_HEIGHT + 44);
-    lv_obj_set_style_border_color(self->_scopeTextarea, theme::ACCENT(), LV_STATE_FOCUSED);
+    _scopeTextarea = lv_textarea_create(_scopeOverlay);
+    lv_textarea_set_one_line(_scopeTextarea, true);
+    lv_textarea_set_max_length(_scopeTextarea, 31);
+    lv_textarea_set_placeholder_text(_scopeTextarea, t("scope_hint"));
+    lv_textarea_set_text(_scopeTextarea, preFill.c_str());
+    lv_obj_set_width(_scopeTextarea, theme::CONTENT_WIDTH);
+    lv_obj_align(_scopeTextarea, LV_ALIGN_TOP_MID, 0, theme::STATUS_BAR_HEIGHT + 44);
+    lv_obj_set_style_border_color(_scopeTextarea, theme::ACCENT(), LV_STATE_FOCUSED);
 
-    lv_obj_t* btnRow = lv_obj_create(self->_scopeOverlay);
+    lv_obj_t* btnRow = lv_obj_create(_scopeOverlay);
     lv_obj_set_size(btnRow, theme::CONTENT_WIDTH, LV_SIZE_CONTENT);
     lv_obj_set_style_bg_opa(btnRow, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(btnRow, 0, 0);
@@ -2453,7 +2501,7 @@ void SettingsScreen::scopeRowCb(lv_event_t* e) {
     lv_obj_set_width(save, LV_PCT(100));
     lv_obj_set_style_bg_color(save, theme::ACCENT(), 0);
     lv_obj_set_style_bg_color(save, theme::BG_SECONDARY(), LV_STATE_FOCUSED);
-    lv_obj_add_event_cb(save, scopeReadyCb, LV_EVENT_CLICKED, self);
+    lv_obj_add_event_cb(save, scopeReadyCb, LV_EVENT_CLICKED, this);
     lv_obj_t* saveLbl = lv_label_create(save);
     lv_label_set_text(saveLbl, t("btn_save"));
     lv_obj_center(saveLbl);
@@ -2465,28 +2513,28 @@ void SettingsScreen::scopeRowCb(lv_event_t* e) {
     lv_obj_add_event_cb(cancel, [](lv_event_t* ev) {
         auto* s = static_cast<SettingsScreen*>(lv_event_get_user_data(ev));
         if (s) lv_async_call([](void* p) { ((SettingsScreen*)p)->hideScopeEditor(); }, s);
-    }, LV_EVENT_CLICKED, self);
+    }, LV_EVENT_CLICKED, this);
     lv_obj_t* cxlLbl = lv_label_create(cancel);
     lv_label_set_text(cxlLbl, t("btn_cancel"));
     lv_obj_center(cxlLbl);
 
     lv_group_t* g = lv_group_create();
-    self->_editorGroup = g;
-    lv_group_add_obj(g, self->_scopeTextarea);
+    _editorGroup = g;
+    lv_group_add_obj(g, _scopeTextarea);
     lv_group_add_obj(g, save);
     lv_group_add_obj(g, cancel);
-    lv_group_focus_obj(self->_scopeTextarea);
-    UIManager::instance().switchToModalGroup(self->_scopeOverlay);
+    lv_group_focus_obj(_scopeTextarea);
+    UIManager::instance().switchToModalGroup(_scopeOverlay);
     IInput::instance().attachToGroup(g);
-    lv_obj_add_event_cb(self->_scopeTextarea, scopeReadyCb, LV_EVENT_READY, self);
+    lv_obj_add_event_cb(_scopeTextarea, scopeReadyCb, LV_EVENT_READY, this);
 
 #ifdef PLATFORM_TWATCH
-    self->_scopeKbd = lv_keyboard_create(self->_scopeOverlay);
-    lv_keyboard_set_textarea(self->_scopeKbd, self->_scopeTextarea);
-    lv_keyboard_set_popovers(self->_scopeKbd, true);
-    lv_btnmatrix_set_btn_ctrl_all(self->_scopeKbd, LV_BTNMATRIX_CTRL_NO_REPEAT);
-    lv_obj_add_event_cb(self->_scopeKbd, scopeReadyCb, LV_EVENT_READY, self);
-    lv_obj_add_event_cb(self->_scopeKbd, [](lv_event_t* ev) {
+    _scopeKbd = lv_keyboard_create(_scopeOverlay);
+    lv_keyboard_set_textarea(_scopeKbd, _scopeTextarea);
+    lv_keyboard_set_popovers(_scopeKbd, true);
+    lv_btnmatrix_set_btn_ctrl_all(_scopeKbd, LV_BTNMATRIX_CTRL_NO_REPEAT);
+    lv_obj_add_event_cb(_scopeKbd, scopeReadyCb, LV_EVENT_READY, this);
+    lv_obj_add_event_cb(_scopeKbd, [](lv_event_t* ev) {
         auto* self = static_cast<SettingsScreen*>(lv_event_get_user_data(ev));
         if (!self) return;
         lv_event_code_t code = lv_event_get_code(ev);
@@ -2495,7 +2543,7 @@ void SettingsScreen::scopeRowCb(lv_event_t* e) {
         } else if (code == LV_EVENT_CANCEL) {
             lv_async_call([](void* p) { ((SettingsScreen*)p)->hideScopeEditor(); }, self);
         }
-    }, LV_EVENT_ALL, self);
+    }, LV_EVENT_ALL, this);
 #endif
 }
 

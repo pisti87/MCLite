@@ -87,6 +87,8 @@ public:
     bool persistAdvertBlob(const uint8_t* pubKey);
     // Drop a removed contact's persisted advert blob.
     void deleteAdvertBlob(const uint8_t* pubKey);
+    // Reset a contact's learned path (forces flood rediscovery). Returns false if unknown.
+    bool resetPathByKey(const uint8_t* pubKey);
 
     // Clear pending telemetry state (call on timeout)
     void clearPendingTelemetry();

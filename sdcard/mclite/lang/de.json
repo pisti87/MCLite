@@ -280,5 +280,8 @@
     "err_save_failed": "Speichern fehlgeschlagen (SD)",
     "btn_delete": "Loeschen",
     "convo_del_title": "Eintrag entfernen",
-    "convo_del_confirm": "%s entfernen? Wirksam nach Neustart."
+    "convo_del_confirm": "%s entfernen? Wirksam nach Neustart.",
+    "convo_reset_path": "Pfad zuruecksetzen",
+    "convo_reset_done": "Pfad zurueckgesetzt",
+    "convo_set_scope": "Reichweite setzen"
 }
