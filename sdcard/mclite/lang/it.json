@@ -97,6 +97,7 @@
     "lbl_coding_rate": "Coding Rate",
     "lbl_tx_power": "Potenza TX",
     "lbl_scope": "Portata",
+    "scope_hint": "* o #region",
     "lbl_path_hash": "Path Hash",
     "lbl_status": "Stato",
     "lbl_brightness": "Luminosita",

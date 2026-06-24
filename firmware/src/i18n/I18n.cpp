@@ -122,6 +122,7 @@ const DefaultString DEFAULT_STRINGS[] = {
     {"lbl_coding_rate",     "Coding Rate"},
     {"lbl_tx_power",        "TX Power"},
     {"lbl_scope",           "Scope"},
+    {"scope_hint",          "* or #region"},
     {"lbl_path_hash",       "Path Hash"},
     {"lbl_status",          "Status"},
     {"lbl_brightness",      "Brightness"},

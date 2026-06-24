@@ -472,11 +472,13 @@ void SettingsScreen::buildRadio() {
     addReadOnlyRow(t("lbl_sf_bw"),
                    String(cfg.radio.spreadingFactor) + " / " + String(cfg.radio.bandwidth, 1));
     addReadOnlyRow(t("lbl_coding_rate"), String(cfg.radio.codingRate));
-    addReadOnlyRow(t("lbl_scope"), cfg.radio.scope);
+    // Scope/region + path-hash size are editable on-device (gated full settings); both reboot
+    // on leave to re-apply (scope re-derives _globalScope, hash re-reads at initRadio).
+    addNavRowGated(t("lbl_scope"), cfg.radio.scope, scopeRowCb, false);
     {
         char phBuf[16];
         snprintf(phBuf, sizeof(phBuf), "%u B/hop", (unsigned)(cfg.radio.pathHashMode + 1));
-        addReadOnlyRow(t("lbl_path_hash"), phBuf);
+        addNavRowGated(t("lbl_path_hash"), phBuf, pathHashRowCb, false);
     }
     addReadOnlyRow(t("lbl_status"),
                    MeshManager::instance().isRadioReady() ? t("ready") : t("error"));
@@ -1209,6 +1211,7 @@ void SettingsScreen::hide() {
 
         if (_themeBtnm) hideThemePicker();
         if (_nameTextarea) hideNameEditor();
+        if (_scopeTextarea) hideScopeEditor();
         if (_langBtnm) hideLanguagePicker();
         if (_lockModeBtnm) hideLockModePicker();
         if (_autoLockBtnm) hideAutoLockPicker();
@@ -1327,6 +1330,10 @@ void SettingsScreen::advertRowCb(lv_event_t* e) {
     SettingsScreen* self = (SettingsScreen*)lv_event_get_user_data(e);
     if (self) self->openChoicePicker(ChoiceField::AdvertInterval);
 }
+void SettingsScreen::pathHashRowCb(lv_event_t* e) {
+    SettingsScreen* self = (SettingsScreen*)lv_event_get_user_data(e);
+    if (self) self->openChoicePicker(ChoiceField::PathHashMode);
+}
 
 void SettingsScreen::openChoicePicker(ChoiceField f) {
     if (_choicePanel) return;
@@ -1363,6 +1370,13 @@ void SettingsScreen::openChoicePicker(ChoiceField f) {
                 g_choiceLabels.push_back(advertLabel(m));
             }
             break;
+        case ChoiceField::PathHashMode:
+            for (int m = 0; m <= 2; m++) {
+                g_choiceVals.push_back(m);
+                char b[12]; snprintf(b, sizeof(b), "%d B/hop", m + 1);
+                g_choiceLabels.push_back(String(b));
+            }
+            break;
     }
 
     // Determine which option matches the current config value.
@@ -1392,6 +1406,11 @@ void SettingsScreen::openChoicePicker(ChoiceField f) {
         case ChoiceField::AdvertInterval:
             for (size_t i = 0; i < g_choiceVals.size(); i++) {
                 if (g_choiceVals[i] == (int)cfg.radio.advertIntervalMin) { initSel = (uint16_t)i; break; }
+            }
+            break;
+        case ChoiceField::PathHashMode:
+            for (size_t i = 0; i < g_choiceVals.size(); i++) {
+                if (g_choiceVals[i] == (int)cfg.radio.pathHashMode) { initSel = (uint16_t)i; break; }
             }
             break;
     }
@@ -1542,6 +1561,14 @@ void SettingsScreen::choiceChosenCb(lv_event_t* e) {
                     g_dsReboot = true;
                     UIManager::instance().showToast(t("theme_apply_body"));
                 }
+            }
+            break;
+        case ChoiceField::PathHashMode:
+            if (idx < g_choiceVals.size() && c.radio.pathHashMode != (uint8_t)g_choiceVals[idx]) {
+                c.radio.pathHashMode = (uint8_t)g_choiceVals[idx];
+                g_dsDirty = true;
+                g_dsReboot = true;
+                UIManager::instance().showToast(t("theme_apply_body"));
             }
             break;
     }
@@ -2347,6 +2374,126 @@ void SettingsScreen::nameRowCb(lv_event_t* e) {
             lv_btnmatrix_set_btn_ctrl_all(self->_nameKbd, LV_BTNMATRIX_CTRL_NO_REPEAT);
         } else if (code == LV_EVENT_CANCEL) {
             lv_async_call([](void* p) { ((SettingsScreen*)p)->hideNameEditor(); }, self);
+        }
+    }, LV_EVENT_ALL, self);
+#endif
+}
+
+// ─────────────────────────── Radio region/scope editor ───────────────────────────
+// Mirrors the device-name editor. On save it reboots-on-leave (g_dsReboot) because the
+// global transport scope re-derives at boot (scopeToTransportKey -> _globalScope).
+
+void SettingsScreen::hideScopeEditor() {
+    if (!_scopeTextarea) return;
+    UIManager::instance().restoreFromModalGroup();
+    if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
+#ifdef PLATFORM_TWATCH
+    _scopeKbd = nullptr;
+#endif
+    _scopeTextarea = nullptr;
+    lv_obj_del_async(_scopeOverlay);
+    _scopeOverlay = nullptr;
+    if (_screen) show();
+}
+
+void SettingsScreen::scopeReadyCb(lv_event_t* e) {
+    SettingsScreen* self = (SettingsScreen*)lv_event_get_user_data(e);
+    if (!self || !self->_scopeTextarea) return;
+    String s = convoTrim(String(lv_textarea_get_text(self->_scopeTextarea)));
+    if (s.length() == 0) s = "*";                 // blank == "*" == no scope
+    auto& cfg = ConfigManager::instance().config();
+    if (cfg.radio.scope != s) {
+        cfg.radio.scope = s;
+        g_dsDirty = true;
+        g_dsReboot = true;                        // _globalScope re-derives at boot
+        UIManager::instance().showToast(t("theme_apply_body"));
+    }
+    lv_async_call([](void* p) { ((SettingsScreen*)p)->hideScopeEditor(); }, self);
+}
+
+void SettingsScreen::scopeRowCb(lv_event_t* e) {
+    SettingsScreen* self = (SettingsScreen*)lv_event_get_user_data(e);
+    if (!self || self->_scopeTextarea) return;
+    const auto& cfg = ConfigManager::instance().config();
+
+    self->_scopeOverlay = lv_obj_create(lv_layer_top());
+    lv_obj_set_size(self->_scopeOverlay, Display::width(), Display::height());
+    lv_obj_set_pos(self->_scopeOverlay, 0, 0);
+    lv_obj_set_style_bg_color(self->_scopeOverlay, theme::BG_PRIMARY(), 0);
+    lv_obj_set_style_bg_opa(self->_scopeOverlay, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(self->_scopeOverlay, 0, 0);
+    lv_obj_clear_flag(self->_scopeOverlay, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* lbl = lv_label_create(self->_scopeOverlay);
+    lv_obj_set_style_text_font(lbl, FONT_HEADING, 0);
+    lv_obj_set_style_text_color(lbl, theme::TEXT_PRIMARY(), 0);
+    lv_label_set_text(lbl, t("lbl_scope"));
+    lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, theme::STATUS_BAR_HEIGHT);
+
+    self->_scopeTextarea = lv_textarea_create(self->_scopeOverlay);
+    lv_textarea_set_one_line(self->_scopeTextarea, true);
+    lv_textarea_set_max_length(self->_scopeTextarea, 31);
+    lv_textarea_set_placeholder_text(self->_scopeTextarea, t("scope_hint"));
+    lv_textarea_set_text(self->_scopeTextarea, cfg.radio.scope.c_str());
+    lv_obj_set_width(self->_scopeTextarea, theme::CONTENT_WIDTH);
+    lv_obj_align(self->_scopeTextarea, LV_ALIGN_TOP_MID, 0, theme::STATUS_BAR_HEIGHT + 44);
+    lv_obj_set_style_border_color(self->_scopeTextarea, theme::ACCENT(), LV_STATE_FOCUSED);
+
+    lv_obj_t* btnRow = lv_obj_create(self->_scopeOverlay);
+    lv_obj_set_size(btnRow, theme::CONTENT_WIDTH, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(btnRow, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(btnRow, 0, 0);
+    lv_obj_set_flex_flow(btnRow, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(btnRow, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(btnRow, theme::PAD_SMALL, 0);
+    lv_obj_align(btnRow, LV_ALIGN_TOP_MID, 0, theme::STATUS_BAR_HEIGHT + 44 + 52);
+    lv_obj_clear_flag(btnRow, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* save = lv_btn_create(btnRow);
+    lv_obj_set_width(save, LV_PCT(100));
+    lv_obj_set_style_bg_color(save, theme::ACCENT(), 0);
+    lv_obj_set_style_bg_color(save, theme::BG_SECONDARY(), LV_STATE_FOCUSED);
+    lv_obj_add_event_cb(save, scopeReadyCb, LV_EVENT_CLICKED, self);
+    lv_obj_t* saveLbl = lv_label_create(save);
+    lv_label_set_text(saveLbl, t("btn_save"));
+    lv_obj_center(saveLbl);
+
+    lv_obj_t* cancel = lv_btn_create(btnRow);
+    lv_obj_set_width(cancel, LV_PCT(100));
+    lv_obj_set_style_bg_color(cancel, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_bg_color(cancel, theme::ACCENT(), LV_STATE_FOCUSED);
+    lv_obj_add_event_cb(cancel, [](lv_event_t* ev) {
+        auto* s = static_cast<SettingsScreen*>(lv_event_get_user_data(ev));
+        if (s) lv_async_call([](void* p) { ((SettingsScreen*)p)->hideScopeEditor(); }, s);
+    }, LV_EVENT_CLICKED, self);
+    lv_obj_t* cxlLbl = lv_label_create(cancel);
+    lv_label_set_text(cxlLbl, t("btn_cancel"));
+    lv_obj_center(cxlLbl);
+
+    lv_group_t* g = lv_group_create();
+    self->_editorGroup = g;
+    lv_group_add_obj(g, self->_scopeTextarea);
+    lv_group_add_obj(g, save);
+    lv_group_add_obj(g, cancel);
+    lv_group_focus_obj(self->_scopeTextarea);
+    UIManager::instance().switchToModalGroup(self->_scopeOverlay);
+    IInput::instance().attachToGroup(g);
+    lv_obj_add_event_cb(self->_scopeTextarea, scopeReadyCb, LV_EVENT_READY, self);
+
+#ifdef PLATFORM_TWATCH
+    self->_scopeKbd = lv_keyboard_create(self->_scopeOverlay);
+    lv_keyboard_set_textarea(self->_scopeKbd, self->_scopeTextarea);
+    lv_keyboard_set_popovers(self->_scopeKbd, true);
+    lv_btnmatrix_set_btn_ctrl_all(self->_scopeKbd, LV_BTNMATRIX_CTRL_NO_REPEAT);
+    lv_obj_add_event_cb(self->_scopeKbd, scopeReadyCb, LV_EVENT_READY, self);
+    lv_obj_add_event_cb(self->_scopeKbd, [](lv_event_t* ev) {
+        auto* self = static_cast<SettingsScreen*>(lv_event_get_user_data(ev));
+        if (!self) return;
+        lv_event_code_t code = lv_event_get_code(ev);
+        if (code == LV_EVENT_VALUE_CHANGED) {
+            lv_btnmatrix_set_btn_ctrl_all(self->_scopeKbd, LV_BTNMATRIX_CTRL_NO_REPEAT);
+        } else if (code == LV_EVENT_CANCEL) {
+            lv_async_call([](void* p) { ((SettingsScreen*)p)->hideScopeEditor(); }, self);
         }
     }, LV_EVENT_ALL, self);
 #endif

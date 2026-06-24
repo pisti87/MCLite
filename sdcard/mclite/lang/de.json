@@ -97,6 +97,7 @@
     "lbl_coding_rate": "Coding Rate",
     "lbl_tx_power": "Sendeleistung",
     "lbl_scope": "Reichweite",
+    "scope_hint": "* oder #region",
     "lbl_path_hash": "Path Hash",
     "lbl_status": "Status",
     "lbl_brightness": "Helligkeit",

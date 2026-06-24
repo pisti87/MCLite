@@ -15,7 +15,7 @@ enum class SettingsSection {
 };
 
 // Generic enum/string choice fields rendered by the shared btnmatrix picker.
-enum class ChoiceField { LocationFormat, ShowTelemetry, LocationPrecision, RegionPreset, AdvertInterval };
+enum class ChoiceField { LocationFormat, ShowTelemetry, LocationPrecision, RegionPreset, AdvertInterval, PathHashMode };
 
 // Simple bool config fields toggled by the shared lv_switch callback. The id is
 // stashed in the switch's user_data so one callback maps to the right field.
@@ -67,6 +67,16 @@ private:
     void hideNameEditor();
     static void nameRowCb(lv_event_t* e);
     static void nameReadyCb(lv_event_t* e);
+
+    // Radio region/scope editor overlay (mirrors the device-name editor)
+    lv_obj_t* _scopeOverlay  = nullptr;
+    lv_obj_t* _scopeTextarea = nullptr;
+#ifdef PLATFORM_TWATCH
+    lv_obj_t* _scopeKbd      = nullptr;
+#endif
+    void hideScopeEditor();
+    static void scopeRowCb(lv_event_t* e);
+    static void scopeReadyCb(lv_event_t* e);
 
     // Boot text editor overlay
     lv_obj_t* _bootTextOverlay  = nullptr;
@@ -161,6 +171,7 @@ private:
     static void locPrecisionRowCb(lv_event_t* e);
     static void regionRowCb(lv_event_t* e);
     static void advertRowCb(lv_event_t* e);
+    static void pathHashRowCb(lv_event_t* e);
 
     // Timezone text editor (GPS section).
     lv_obj_t* _timezoneOverlay  = nullptr;
