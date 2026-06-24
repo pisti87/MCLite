@@ -94,6 +94,14 @@ public:
     static void deriveScopeKey(const String& scope, uint8_t out[16]);
     void setGlobalScope(const uint8_t key[16]);   // all-zero key => null (no scope)
 
+    // Serialize our own advert into out[] for companion EXPORT_CONTACT (self). Returns the blob
+    // length (0 on failure). Name-only — matches MCLite's 0,0 SELF_INFO location reporting.
+    uint8_t exportSelf(const char* name, uint8_t out[]);
+
+    // Held advert blob for a contact (companion EXPORT_CONTACT). Public wrapper over the
+    // protected getBlobByKey. Returns the blob length, 0 if none held.
+    uint8_t exportContactBlob(const uint8_t* pubKey, uint8_t out[]);
+
     // Send DM — returns internal packetId, 0 on failure
     uint32_t sendDM(size_t contactIdx, const char* text, uint32_t timestamp,
                     uint8_t maxRetries);

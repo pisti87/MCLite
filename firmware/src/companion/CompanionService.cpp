@@ -111,6 +111,9 @@ void CompanionService::handleFrame(size_t len) {
         case CMD_SET_DEFAULT_FLOOD_SCOPE: cmdSetDefaultFloodScope(len); break;
         case CMD_GET_DEFAULT_FLOOD_SCOPE: cmdGetDefaultFloodScope();    break;
         case CMD_SET_FLOOD_SCOPE_KEY: cmdSetFloodScopeKey(len);  break;
+        case CMD_RESET_PATH:       cmdResetPath(len);       break;
+        case CMD_EXPORT_CONTACT:   cmdExportContact(len);   break;
+        case CMD_IMPORT_CONTACT:   cmdImportContact(len);   break;
         case CMD_REBOOT:           cmdReboot();             break;
         case CMD_SYNC_NEXT_MESSAGE: cmdSyncNextMessage();   break;
         case CMD_LOGOUT:           writeOK();               break;   // no room sessions yet
@@ -939,6 +942,48 @@ void CompanionService::cmdSetFloodScopeKey(size_t len) {
     else               memset(key, 0, 16);             // null = no scope
     mesh->setGlobalScope(key);
     writeOK();
+}
+
+// CMD_RESET_PATH -> OK/NOT_FOUND. Reset a contact's learned path so the next send floods to
+// rediscover the route. Runtime action (out_path isn't in MCLite config). [1..32]=pubkey.
+void CompanionService::cmdResetPath(size_t len) {
+    if (len < 1 + PUB_KEY_SIZE) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    auto* mesh = MeshManager::instance().mesh();
+    if (!mesh) { writeErr(ERR_CODE_BAD_STATE); return; }
+    ContactInfo* ci = mesh->lookupContactByPubKey(&_cmd[1], PUB_KEY_SIZE);
+    if (!ci) { writeErr(ERR_CODE_NOT_FOUND); return; }
+    mesh->resetPathTo(*ci);
+    writeOK();
+}
+
+// CMD_EXPORT_CONTACT -> RESP_CODE_EXPORT_CONTACT (advert blob). No pubkey = export self;
+// otherwise export a known contact's held advert (the same blob SHARE_CONTACT re-broadcasts).
+void CompanionService::cmdExportContact(size_t len) {
+    auto* mesh = MeshManager::instance().mesh();
+    if (!mesh) { writeErr(ERR_CODE_BAD_STATE); return; }
+    uint8_t blob[MAX_TRANS_UNIT];
+    int blen;
+    if (len < 1 + PUB_KEY_SIZE) {
+        blen = mesh->exportSelf(ConfigManager::instance().config().deviceName.c_str(), blob);
+    } else {
+        blen = mesh->exportContactBlob(&_cmd[1], blob);   // held advert, 0 if none
+    }
+    if (blen <= 0 || blen + 1 > (int)sizeof(_out)) { writeErr(ERR_CODE_NOT_FOUND); return; }
+    _out[0] = RESP_CODE_EXPORT_CONTACT;
+    memcpy(&_out[1], blob, blen);
+    _iface->writeFrame(_out, blen + 1);
+}
+
+// CMD_IMPORT_CONTACT -> OK/ERR. Inject an advert blob; it loops back through the advert RX path
+// and lands in Heard Adverts (MCLite curates contacts, never auto-adds) for the user to Save.
+// Gated by conversation_management. [1..]=advert blob.
+void CompanionService::cmdImportContact(size_t len) {
+    if (len <= 1) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    if (!ConfigManager::instance().config().permissions.conversationManagement) { writeErr(ERR_CODE_BAD_STATE); return; }
+    auto* mesh = MeshManager::instance().mesh();
+    if (!mesh) { writeErr(ERR_CODE_BAD_STATE); return; }
+    if (mesh->importContact(&_cmd[1], (uint8_t)(len - 1))) writeOK();
+    else writeErr(ERR_CODE_ILLEGAL_ARG);
 }
 
 // CMD_SYNC_NEXT_MESSAGE -> next queued message, or NO_MORE_MESSAGES.

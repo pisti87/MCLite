@@ -119,6 +119,9 @@ private:
     void cmdSetDefaultFloodScope(size_t len);   // persistent region (name+key) -> cfg.radio.scope
     void cmdGetDefaultFloodScope();             // read current region (name + derived key)
     void cmdSetFloodScopeKey(size_t len);       // session-only live scope override (raw key)
+    void cmdResetPath(size_t len);              // reset a contact's learned path (flood rediscover)
+    void cmdExportContact(size_t len);          // export self/contact advert blob
+    void cmdImportContact(size_t len);          // inject an advert blob -> Heard Adverts
     void noteSent(uint32_t packetId);   // track a DM awaiting ACK confirmation
 
     // Stream one contact per loop tick while a GET_CONTACTS sync is in progress.

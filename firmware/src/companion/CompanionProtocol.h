@@ -90,6 +90,9 @@ enum : uint8_t {
     CMD_SET_FLOOD_SCOPE_KEY    = 54,  // [1]=0 (reserved) [2..17]=16-byte key (absent = null); session-only
     CMD_SET_DEFAULT_FLOOD_SCOPE = 63, // [1..31]=name [32..47]=16-byte key (len==1 = clear); persistent region
     CMD_GET_DEFAULT_FLOOD_SCOPE = 64, // -> RESP_CODE_DEFAULT_FLOOD_SCOPE
+    CMD_RESET_PATH             = 13,  // [1..32]=contact pubkey; reset its learned path (flood rediscover)
+    CMD_EXPORT_CONTACT         = 17,  // [1..32]=pubkey (absent = self) -> RESP_CODE_EXPORT_CONTACT (advert blob)
+    CMD_IMPORT_CONTACT         = 18,  // [1..]=advert blob; inject -> lands in Heard Adverts (curated)
 };
 
 // ---- Responses (firmware -> app), out_frame[0] ----
@@ -111,6 +114,7 @@ enum : uint8_t {
     RESP_CODE_CHANNEL_MSG_RECV_V3 = 17,  // sync reply (app ver >= 3)
     RESP_CODE_CHANNEL_INFO     = 18,  // reply to CMD_GET_CHANNEL
     RESP_CODE_DEFAULT_FLOOD_SCOPE = 28,  // reply to CMD_GET_DEFAULT_FLOOD_SCOPE: [1..31]=name [32..47]=key
+    RESP_CODE_EXPORT_CONTACT   = 11,  // reply to CMD_EXPORT_CONTACT: [1..]=advert blob
 };
 
 // ---- Push codes (unsolicited firmware -> app), out_frame[0] ----

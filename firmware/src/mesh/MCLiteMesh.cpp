@@ -58,6 +58,20 @@ void MCLiteMesh::setGlobalScope(const uint8_t key[16]) {
     memcpy(_globalScope.key, key, 16);   // live session override (not persisted)
 }
 
+uint8_t MCLiteMesh::exportSelf(const char* name, uint8_t out[]) {
+    mesh::Packet* pkt = createSelfAdvert(name);
+    if (!pkt) return 0;
+    pkt->header |= ROUTE_TYPE_FLOOD;     // would be sent flood; matches the reference export
+    uint8_t n = pkt->writeTo(out);
+    releasePacket(pkt);                  // undo obtainNewPacket() inside createSelfAdvert
+    return n;
+}
+
+uint8_t MCLiteMesh::exportContactBlob(const uint8_t* pubKey, uint8_t out[]) {
+    int n = getBlobByKey(pubKey, PUB_KEY_SIZE, out);
+    return (n > 0) ? (uint8_t)n : 0;
+}
+
 MCLiteMesh::MCLiteMesh(CustomSX1262& radio, SimpleMeshTables& tables)
     : BaseChatMesh(
           *(new CustomSX1262Wrapper(radio, sBoard)),

@@ -57,6 +57,11 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
   without the config tool. A blank region means none (`*`); a bare name like `region` is treated as `#region`. The
   other radio params (frequency / SF / BW / CR / TX) stay on the existing region-preset picker + TX slider.
 
+- **More companion commands:** **reset a contact's path** (`CMD_RESET_PATH` — forces flood rediscovery of the
+  route), **export a contact** (`CMD_EXPORT_CONTACT` — your own or a known contact's signed advert, as a portable
+  blob), and **import a contact** (`CMD_IMPORT_CONTACT` — the imported advert appears in **Heard Adverts** to review
+  and save, keeping the contact list curated). Import is gated by `permissions.conversation_management`.
+
 ### Fixed
 - **Region scope without a leading `#` now matches MeshCore.** A region/flood-scope written as a bare name (e.g.
   `region` instead of `#region`) was hashed literally, producing a different transport key than the rest of the
