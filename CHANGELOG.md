@@ -46,6 +46,11 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
   design and are rejected.
 
 ### Fixed
+- **Region scope without a leading `#` now matches MeshCore.** A region/flood-scope written as a bare name (e.g.
+  `region` instead of `#region`) was hashed literally, producing a different transport key than the rest of the
+  network. MCLite now prepends `#` to a bare name before deriving the key — mirroring MeshCore's implicit-hashtag
+  behavior — so `region` and `#region` are the same region and interoperate. (`#`/`$` prefixes pass through
+  unchanged; explicit `#region` configs are unaffected.)
 - **Custom canned-message list (global) was lost on save.** A `canned_messages` array configured at the messaging
   level was serialized back as a bare `true`, so the custom list vanished on the next boot — and with the new
   companion config writes, almost any settings change triggered it. Serialization now writes the array faithfully

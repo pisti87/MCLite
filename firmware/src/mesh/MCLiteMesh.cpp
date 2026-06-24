@@ -39,8 +39,12 @@ static TransportKey scopeToTransportKey(const String& scope) {
     TransportKey tk;
     memset(tk.key, 0, sizeof(tk.key));
     if (scope == "*" || scope.length() == 0) return tk;
+    // Match MeshCore: a bare region name is an implicit hashtag region, so prepend '#' before
+    // hashing — RegionMap feeds getAutoKeyFor the '#'-prefixed name, so SHA256("#region")[:16]
+    // is the canonical key. Pass through an explicit '#' (hashtag) or '$' (private) prefix.
+    String name = (scope[0] == '#' || scope[0] == '$') ? scope : (String("#") + scope);
     uint8_t hash[32];
-    mbedtls_sha256((const uint8_t*)scope.c_str(), scope.length(), hash, 0);
+    mbedtls_sha256((const uint8_t*)name.c_str(), name.length(), hash, 0);
     memcpy(tk.key, hash, 16);
     return tk;
 }
