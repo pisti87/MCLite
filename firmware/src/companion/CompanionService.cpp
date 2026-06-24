@@ -59,6 +59,10 @@ uint32_t CompanionService::ensureBlePin() {
 }
 
 void CompanionService::loop() {
+    // Deferred reboot to apply a config-mutating command (e.g. CMD_SET_CHANNEL).
+    // Checked before the _iface guard so it fires even if the transport has closed.
+    if (_rebootAtMs && (int32_t)(millis() - _rebootAtMs) >= 0) { delay(50); ESP.restart(); }
+
     if (!_iface) return;
 
     // Reset per-session state when a client drops, so stale queued frames and a
@@ -93,6 +97,7 @@ void CompanionService::handleFrame(size_t len) {
         case CMD_GET_CONTACTS:     cmdGetContacts(len);     break;
         case CMD_GET_CONTACT_BY_KEY: cmdGetContactByKey(len); break;
         case CMD_GET_CHANNEL:      cmdGetChannel(len);      break;
+        case CMD_SET_CHANNEL:      cmdSetChannel(len);      break;
         case CMD_SYNC_NEXT_MESSAGE: cmdSyncNextMessage();   break;
         case CMD_LOGOUT:           writeOK();               break;   // no room sessions yet
         case CMD_HAS_CONNECTION:   writeErr(ERR_CODE_NOT_FOUND); break;
@@ -545,6 +550,56 @@ void CompanionService::cmdGetChannel(size_t len) {
     strncpy((char*)&_out[i], ch.name, 32); i += 32;
     memcpy(&_out[i], ch.channel.secret, 16); i += 16;   // 128-bit PSK only
     _iface->writeFrame(_out, i);
+}
+
+// CMD_SET_CHANNEL -> RESP_CODE_OK/ERR. Add a channel (or remove it via an empty name),
+// mirroring the on-device add/remove. Layout: [1]=idx [2..33]=name(32) [34..49]=16-byte
+// secret. Mutates config and reboots to apply (channels register only at boot); the app
+// reconnects afterward. Gated by permissions.conversation_management. Add/remove only.
+void CompanionService::cmdSetChannel(size_t len) {
+    if (len < 2) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    auto& mgr = ConfigManager::instance();
+    if (!mgr.config().permissions.conversationManagement) { writeErr(ERR_CODE_BAD_STATE); return; }
+
+    uint8_t idx = _cmd[1];
+
+    // Name: up to 32 bytes from [2] (null-padded by the app); String stops at first NUL.
+    char nameBuf[33];
+    size_t navail = (len > 2) ? (len - 2) : 0;
+    if (navail > 32) navail = 32;
+    memcpy(nameBuf, &_cmd[2], navail);
+    nameBuf[navail] = '\0';
+    String name(nameBuf);
+
+    // Empty name -> remove the channel at idx.
+    if (name.length() == 0) {
+        if (idx >= mgr.config().channels.size()) { writeErr(ERR_CODE_NOT_FOUND); return; }
+        if (!mgr.removeChannelAt(idx)) { writeErr(ERR_CODE_BAD_STATE); return; }
+        _rebootAtMs = millis() + REBOOT_DELAY_MS;
+        writeOK();
+        return;
+    }
+
+    // Add: need the full frame (idx + 32-byte name + 16-byte secret).
+    if (len < 50) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    ChannelConfig cc;
+    cc.name = name;
+    if (idx == 0 || name.equalsIgnoreCase("Public")) {
+        cc.type = "public";   // appendChannel forces the canonical name/PSK/SOS flags
+    } else {
+        cc.type = "private";  // explicit 16-byte secret -> 32 hex (passes appendChannel's check)
+        char psk[33];
+        for (int i = 0; i < 16; i++) sprintf(psk + i * 2, "%02x", _cmd[34 + i]);
+        psk[32] = '\0';
+        cc.psk = psk;
+    }
+    if (!mgr.appendChannel(cc)) {
+        writeErr((int)mgr.config().channels.size() >= defaults::MAX_CHANNELS
+                     ? ERR_CODE_TABLE_FULL : ERR_CODE_BAD_STATE);   // BAD_STATE also = dup/edit (out of scope)
+        return;
+    }
+    _rebootAtMs = millis() + REBOOT_DELAY_MS;
+    writeOK();
 }
 
 // CMD_SYNC_NEXT_MESSAGE -> next queued message, or NO_MORE_MESSAGES.

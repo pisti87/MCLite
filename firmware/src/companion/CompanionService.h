@@ -102,6 +102,7 @@ private:
     void cmdSendChannelTxtMsg(size_t len);
     void cmdSendTelemetryReq(size_t len);   // request telemetry from a contact (over the mesh)
     void cmdSendLogin(size_t len);          // log into an already-configured room/repeater
+    void cmdSetChannel(size_t len);         // add a channel (or remove via empty name); reboots to apply
     void noteSent(uint32_t packetId);   // track a DM awaiting ACK confirmation
 
     // Stream one contact per loop tick while a GET_CONTACTS sync is in progress.
@@ -138,6 +139,11 @@ private:
     struct PendingLogin { bool active = false; bool retried = false;
                           bool fallbackEligible = false; uint8_t prefix[6] = {0}; };
     PendingLogin _pendingLogin[MAX_ROOMS];
+
+    // Deferred reboot after a config-mutating command (CMD_SET_CHANNEL). Re-armed on
+    // each change so a burst persists before one reboot; 0 = none. Checked in loop().
+    static constexpr uint32_t REBOOT_DELAY_MS = 1500;
+    uint32_t _rebootAtMs = 0;
 
     // Offline queue of pre-built sync frames (drained by SYNC_NEXT_MESSAGE).
     struct OfflineMsg { uint8_t len; uint8_t buf[MAX_FRAME_SIZE]; };

@@ -19,6 +19,9 @@
 //     messaging.request_telemetry flag.
 //   - CMD_SEND_LOGIN — logs into an already-configured room/repeater over the mesh
 //     (same as the on-device room login); session is RAM-only, no config write.
+// One honored *write* (mutates stored config + reboots to apply, mirroring on-device
+// add/remove), gated by permissions.conversation_management — add/remove only, no edit:
+//   - CMD_SET_CHANNEL — add a channel (or remove it, via an empty name).
 
 #include <helpers/BaseSerialInterface.h>   // MAX_FRAME_SIZE (172)
 
@@ -40,6 +43,7 @@ enum : uint8_t {
     CMD_LOGOUT                 = 29,
     CMD_GET_CONTACT_BY_KEY     = 30,
     CMD_GET_CHANNEL            = 31,
+    CMD_SET_CHANNEL            = 0x20,  // [1]=idx(0-7) [2..33]=name(32) [34..49]=16-byte secret; empty name = remove
     CMD_SEND_LOGIN             = 26,  // [1..32]=32-byte room/repeater pubkey [33..]=password (<=15)
     CMD_SEND_TELEMETRY_REQ     = 39,  // [1..3]=reserved [4..35]=32-byte contact pubkey
 };
