@@ -130,6 +130,12 @@ private:
     void pumpContacts();
     void writeContactFrame(uint8_t code, const ::ContactInfo& c);
 
+    // Clear all per-session state (pending ACKs, pending logins, offline queue,
+    // contact-iteration cursor, negotiated app version) so nothing leaks from one
+    // client/transport into the next. Called on connect (begin), teardown (end),
+    // and the client-disconnect edge in loop().
+    void resetSessionState();
+
     // Reply helpers
     void writeOK();
     void writeErr(uint8_t code);

@@ -33,11 +33,24 @@ CompanionService& CompanionService::instance() {
     return inst;
 }
 
+void CompanionService::resetSessionState() {
+    _appVer = 0;
+    _offlineLen = 0;
+    _contactsIterating = false;
+    _contactCursor = 0;
+    _contactCount = 0;
+    _contactsSince = 0;
+    _mostRecentLastmod = 0;
+    for (auto& p  : _pending)      p.active  = false;   // stop tracking ACKs for a gone client
+    for (auto& pl : _pendingLogin) pl.active = false;   // don't leak a login push to the next client
+}
+
 void CompanionService::begin(BaseSerialInterface* iface) {
     if (_iface == iface) return;
     if (_iface) end();
     _iface = iface;
-    _appVer = 0;
+    resetSessionState();
+    _wasConnected = false;   // first connection is a clean edge
     if (_iface) _iface->enable();
     LOGLN("[Companion] interface enabled");
 }
@@ -46,7 +59,8 @@ void CompanionService::end() {
     if (!_iface) return;
     _iface->disable();
     _iface = nullptr;
-    _appVer = 0;
+    resetSessionState();   // a transport torn down while connected never hits the loop() disconnect edge
+    _wasConnected = false;
     LOGLN("[Companion] interface disabled");
 }
 
@@ -70,10 +84,7 @@ void CompanionService::loop() {
     // Reset per-session state when a client drops, so stale queued frames and a
     // stale negotiated version never leak into the next connection.
     bool conn = _iface->isConnected();
-    if (!conn && _wasConnected) {
-        _offlineLen = 0; _contactsIterating = false; _appVer = 0;
-        for (auto& pl : _pendingLogin) pl.active = false;  // don't leak a login push to the next client
-    }
+    if (!conn && _wasConnected) resetSessionState();
     _wasConnected = conn;
 
     size_t len = _iface->checkRecvFrame(_cmd);

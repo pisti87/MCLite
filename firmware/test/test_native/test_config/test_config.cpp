@@ -409,6 +409,24 @@ void test_canned_global_off_roundtrips() {
     TEST_ASSERT_EQUAL(0, cfg->config().messaging.cannedCustom.size());
 }
 
+void test_canned_array_then_bool_false_clears() {
+    // Regression guard: parseJson must clear cannedCustom before the canned_messages branch,
+    // so a second parse with the toggle off does not retain the first parse's custom list.
+    parse("{\"messaging\":{\"canned_messages\":[\"A\",\"B\"]}}");
+    TEST_ASSERT_EQUAL(2, cfg->config().messaging.cannedCustom.size());
+    cfg->parseJson(String("{\"messaging\":{\"canned_messages\":false}}"));  // no AppConfig reset
+    TEST_ASSERT_FALSE(cfg->config().messaging.cannedMessages);
+    TEST_ASSERT_EQUAL(0, cfg->config().messaging.cannedCustom.size());
+}
+
+void test_canned_array_then_absent_key_clears() {
+    // canned_messages key absent but the messaging section present (e.g. an older/edited config):
+    // the custom list from a prior parse must not survive.
+    parse("{\"messaging\":{\"canned_messages\":[\"A\",\"B\"]}}");
+    cfg->parseJson(String("{\"messaging\":{}}"));
+    TEST_ASSERT_EQUAL(0, cfg->config().messaging.cannedCustom.size());
+}
+
 void test_canned_roundtrips_through_serialize() {
     parse("{\"contacts\":[{\"alias\":\"Bot\",\"public_key\":\"AAAA\",\"canned\":[\"X\",\"Y\"]}],"
           "\"channels\":[{\"name\":\"#c\",\"type\":\"hashtag\",\"index\":0,\"canned\":[\"Z\"]}],"
@@ -668,6 +686,62 @@ void test_channel_scope_parsed() {
 void test_channel_scope_wildcard_override() {
     parse("{\"channels\":[{\"name\":\"#test\",\"type\":\"hashtag\",\"index\":0,\"scope\":\"*\"}]}");
     TEST_ASSERT_EQUAL_STRING("*", cfg->config().channels[0].scope.c_str());
+}
+
+void test_radio_scope_round_trips() {
+    // Serialize side is conditional (radio scope written only when != "*"); a regression
+    // there would silently drop the region on save.
+    parse("{\"radio\":{\"scope\":\"#europe\"}}");
+    String json = cfg->toJson();
+    cfg->config() = AppConfig{};
+    cfg->parseJson(json);
+    TEST_ASSERT_EQUAL_STRING("#europe", cfg->config().radio.scope.c_str());
+}
+
+void test_radio_scope_wildcard_round_trips() {
+    // The "*" default must survive the round trip even though it isn't serialized.
+    parse("{\"radio\":{\"scope\":\"*\"}}");
+    String json = cfg->toJson();
+    cfg->config() = AppConfig{};
+    cfg->parseJson(json);
+    TEST_ASSERT_EQUAL_STRING("*", cfg->config().radio.scope.c_str());
+}
+
+void test_channel_scope_round_trips() {
+    // channel scope is written only when non-empty; an empty (inherit) scope must also survive.
+    parse("{\"channels\":[{\"name\":\"#a\",\"type\":\"hashtag\",\"index\":0,\"scope\":\"#local\"},"
+          "{\"name\":\"#b\",\"type\":\"hashtag\",\"index\":1}]}");
+    String json = cfg->toJson();
+    cfg->config() = AppConfig{};
+    cfg->parseJson(json);
+    TEST_ASSERT_EQUAL_STRING("#local", cfg->config().channels[0].scope.c_str());
+    TEST_ASSERT_EQUAL_STRING("", cfg->config().channels[1].scope.c_str());
+}
+
+// ═══ Radio path-hash mode (bytes per repeater hop) ═══
+
+void test_path_hash_mode_parsed() {
+    parse("{\"radio\":{\"path_hash_mode\": 2}}");
+    TEST_ASSERT_EQUAL_UINT8(2, cfg->config().radio.pathHashMode);
+}
+
+void test_path_hash_mode_default() {
+    parse("{}");
+    TEST_ASSERT_EQUAL_UINT8(defaults::RADIO_PATH_HASH_MODE, cfg->config().radio.pathHashMode);
+}
+
+void test_path_hash_mode_clamped_high() {
+    // Out-of-range (>2) must fall back to the default, not store a bogus byte-count.
+    parse("{\"radio\":{\"path_hash_mode\": 5}}");
+    TEST_ASSERT_EQUAL_UINT8(defaults::RADIO_PATH_HASH_MODE, cfg->config().radio.pathHashMode);
+}
+
+void test_path_hash_mode_round_trips() {
+    parse("{\"radio\":{\"path_hash_mode\": 1}}");
+    String json = cfg->toJson();
+    cfg->config() = AppConfig{};
+    cfg->parseJson(json);
+    TEST_ASSERT_EQUAL_UINT8(1, cfg->config().radio.pathHashMode);
 }
 
 // ═══ Missing sections use defaults ═══
@@ -1106,6 +1180,8 @@ int main() {
     RUN_TEST(test_canned_blanks_skipped_and_capped);
     RUN_TEST(test_canned_global_array_roundtrips);
     RUN_TEST(test_canned_global_off_roundtrips);
+    RUN_TEST(test_canned_array_then_bool_false_clears);
+    RUN_TEST(test_canned_array_then_absent_key_clears);
     RUN_TEST(test_canned_roundtrips_through_serialize);
     RUN_TEST(test_empty_canned_omitted_from_serialize);
     RUN_TEST(test_auto_telemetry_defaults_off);
@@ -1147,6 +1223,13 @@ int main() {
     RUN_TEST(test_channel_scope_default_empty);
     RUN_TEST(test_channel_scope_parsed);
     RUN_TEST(test_channel_scope_wildcard_override);
+    RUN_TEST(test_radio_scope_round_trips);
+    RUN_TEST(test_radio_scope_wildcard_round_trips);
+    RUN_TEST(test_channel_scope_round_trips);
+    RUN_TEST(test_path_hash_mode_parsed);
+    RUN_TEST(test_path_hash_mode_default);
+    RUN_TEST(test_path_hash_mode_clamped_high);
+    RUN_TEST(test_path_hash_mode_round_trips);
 
     // Missing sections
     RUN_TEST(test_missing_radio_uses_defaults);
