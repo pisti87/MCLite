@@ -674,6 +674,10 @@ void UIManager::onMessageFailed(uint32_t packetId) {
     }
 }
 
+void UIManager::refreshConvoList() {
+    if (_currentScreen == Screen::CONVO_LIST) _convoList.refresh();
+}
+
 uint32_t UIManager::handleSend(const ConvoId& id, const String& text) {
     // Defensive byte-length guard (ChatScreen guards user-typed text first; this
     // also covers the location-send path). String::length() is the UTF-8 byte

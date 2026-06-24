@@ -24,15 +24,18 @@
 //   - CMD_REBOOT — reboots the device (a power-cycle; no stored-state change). No response.
 // Honored conversation-management *writes* (mutate stored config), gated by
 // permissions.conversation_management, mirroring on-device add/remove:
-//   - CMD_SET_CHANNEL — add a channel (or remove it, via an empty name). Reboots to apply
-//     (channels derive/register at boot); the new channel is also registered live so the
-//     app's immediate GET_CHANNEL returns the real key.
+//   - CMD_SET_CHANNEL — add a channel (or remove it, via an empty name). Adding applies LIVE
+//     (MeshCore addChannel registers at runtime; the app's immediate GET_CHANNEL returns the
+//     real key). Removing reboots to apply — MeshCore has no runtime channel removal (no
+//     removeChannel; channels[] is private), so the live table is rebuilt from config at boot.
 //   - CMD_ADD_UPDATE_CONTACT — add a new contact, or edit an existing one's display name.
+//     Applies LIVE with no reboot (MeshCore addContact + ContactStore renders the alias), so
+//     the session stays connected. Editing maps to the display name only: per-contact
+//     permission flags are device-owner policy (not in the app's contact-settings model) and
+//     the app's flags byte is app-local.
 //   - CMD_REMOVE_CONTACT — remove a contact (plus its chat history and any held advert).
-//     Contacts apply LIVE with no reboot (MeshCore add/removeContact are runtime ops and
-//     GET_CONTACTS renders the configured alias), so the session stays connected. Editing
-//     maps to the display name only: per-contact permission flags are device-owner policy
-//     (not in the app's contact-settings model) and the app's flags byte is app-local.
+//     Reboots to apply, matching channel removal — the uniform model is: adding/editing is
+//     live, removing reboots (the app reconnects).
 
 #include <helpers/BaseSerialInterface.h>   // MAX_FRAME_SIZE (172)
 

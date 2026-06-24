@@ -14,19 +14,27 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
     uses the password already in the device config, and a wrong password instantly retries with the stored one.
     Thanks to the reporters (#32).
   - **Add / remove channels** (`CMD_SET_CHANNEL`): join a Public, hashtag, or private channel — or remove one —
-    from the app. The change saves and applies after a quick reboot (the app reconnects on its own), and the new
-    channel is also registered live so the app's immediate share QR shows the real key, not zeros. Gated by the
+    from the app. **Adding applies instantly with no reboot** — the channel is usable right away and its share QR
+    shows the real key, not zeros, with the session staying connected. **Removing a channel still reboots** to
+    apply (a known limitation — MeshCore offers no way to remove a channel from the running radio, so the device
+    rebuilds its channel table from config at boot; the app reconnects on its own). Gated by the
     `permissions.conversation_management` setting, so a locked-down device still refuses it (#31).
   - **Add / edit / remove contacts** (`CMD_ADD_UPDATE_CONTACT`, `CMD_REMOVE_CONTACT`): add a contact, rename one,
-    or delete one (and its chat history) straight from the app. These apply **live with no reboot** — the contact
-    list updates immediately and the app stays connected. Editing maps to the contact's **display name**;
-    per-contact permission flags stay device-owner settings (the config tool / on-device Admin), and the app's own
-    contact flags remain app-local. Also gated by `permissions.conversation_management` (#33).
+    or delete one (and its chat history) straight from the app. **Adding and renaming apply instantly** (the app
+    stays connected); **removing reboots** to apply (the app reconnects) — see the consistent add/remove model
+    below. Editing maps to the contact's **display name**; per-contact permission flags stay device-owner settings
+    (the config tool / on-device Admin), and the app's own contact flags remain app-local. Gated by
+    `permissions.conversation_management` (#33).
   - **Share a contact** (`CMD_SHARE_CONTACT`) re-broadcasts a contact's advert so a nearby device can add them,
     and **reboot** (`CMD_REBOOT`) is now honoured from the app's button.
   - The app's **Local vs Flood** advert buttons were already handled; confirmed during this work.
-  With this, the companion can fully manage rooms, channels, and contacts (#31, #32, #33 all closed). In-place
-  editing of a contact's permission flags / a channel's settings still arrives alongside on-device editing.
+  With this, the companion can fully manage rooms, channels, and contacts (#31, #32, #33 all closed). A consistent
+  rule across both contacts and channels: **adding and editing apply instantly; removing reboots** to apply (the
+  app reconnects on its own). The reboot on removal is required for channels — MeshCore has no way to drop a
+  channel from the running radio — and kept for contacts so the behaviour is uniform and predictable. Live changes
+  are reflected on the **device's own UI** too — a contact/channel added or renamed from the app shows up in the
+  on-device conversation list and Admin screens right away, no reboot. In-place editing of a contact's permission
+  flags / a channel's settings still arrives alongside on-device editing.
 
 ## [0.4.0] — 2026-06-22
 

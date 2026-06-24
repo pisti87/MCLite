@@ -560,8 +560,12 @@ void CompanionService::cmdGetChannel(size_t len) {
 
 // CMD_SET_CHANNEL -> RESP_CODE_OK/ERR. Add a channel (or remove it via an empty name),
 // mirroring the on-device add/remove. Layout: [1]=idx [2..33]=name(32) [34..49]=16-byte
-// secret. Mutates config and reboots to apply (channels register only at boot); the app
-// reconnects afterward. Gated by permissions.conversation_management. Add/remove only.
+// secret. Gated by permissions.conversation_management. Add/remove only (no edit).
+//   ADD applies LIVE with no reboot: MeshCore's addChannel registers a channel at runtime,
+//        so the app can use it (and read its real key) immediately and the session stays up.
+//   REMOVE must reboot: MeshCore exposes no runtime channel removal (no removeChannel; the
+//        channels[] table is private with no reset), so the only way to drop a channel from
+//        the live table is to rebuild it from config at boot. The app reconnects afterward.
 void CompanionService::cmdSetChannel(size_t len) {
     if (len < 2) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
     auto& mgr = ConfigManager::instance();
@@ -577,10 +581,14 @@ void CompanionService::cmdSetChannel(size_t len) {
     nameBuf[navail] = '\0';
     String name(nameBuf);
 
-    // Empty name -> remove the channel at idx.
+    // Empty name -> remove the channel at idx. Unlike add, this reboots to apply: MeshCore
+    // has no runtime channel removal, so we drop it from config and rebuild the live table at
+    // boot (see the header comment). The app reconnects on its own.
     if (name.length() == 0) {
         if (idx >= mgr.config().channels.size()) { writeErr(ERR_CODE_NOT_FOUND); return; }
+        String chName = mgr.config().channels[idx].name;
         if (!mgr.removeChannelAt(idx)) { writeErr(ERR_CODE_BAD_STATE); return; }
+        MessageStore::instance().removeConversation(ConvoId{ConvoId::CHANNEL, chName});  // parity w/ on-device
         _rebootAtMs = millis() + REBOOT_DELAY_MS;
         writeOK();
         return;
@@ -615,17 +623,24 @@ void CompanionService::cmdSetChannel(size_t len) {
         return;
     }
 
-    // Register the new channel live so the app's immediate GET_CHANNEL (it builds the
-    // confirmation/share QR right after the add) returns the real key instead of zeros.
-    // The deferred reboot still rebuilds everything from config. Reload ChannelStore so the
-    // hashtag PSK is derived / private PSK decoded, then add by its assigned index (skip-safe);
-    // mesh->addChannel lands at the mesh's next slot, which is the idx the app will query.
+    // Register the new channel LIVE (no reboot): reload ChannelStore so the hashtag PSK is
+    // derived / private PSK decoded, then mesh->addChannel registers it at the mesh's next
+    // slot. The app's immediate GET_CHANNEL (it builds the confirmation/share QR right after
+    // the add) then returns the real key instead of zeros, and the channel is usable straight
+    // away — no reboot, session stays connected. Config is persisted, so a later reboot
+    // rebuilds the same table.
     ChannelStore::instance().loadFromConfig();
     Channel* nc = ChannelStore::instance().findByIndex(mgr.config().channels.back().index);
     auto* mesh = MeshManager::instance().mesh();
-    if (nc && mesh) mesh->addChannel(nc->name.c_str(), nc->pskB64.c_str());
+    if (nc && mesh) {
+        mesh->addChannel(nc->name.c_str(), nc->pskB64.c_str());
+        // Create the on-device conversation + redraw the convo list (mirrors main.cpp's
+        // boot-time ensureConversation for channels) so the channel appears live.
+        MessageStore::instance().ensureConversation(
+            ConvoId{ConvoId::CHANNEL, nc->name}, nc->name, nc->isPrivate(), nc->readOnly);
+        UIManager::instance().refreshConvoList();
+    }
 
-    _rebootAtMs = millis() + REBOOT_DELAY_MS;
     writeOK();
 }
 
@@ -657,6 +672,11 @@ void CompanionService::cmdAddUpdateContact(size_t len) {
         if (advName.length() && advName != mgr.config().contacts[idx].alias) {
             if (!mgr.updateContactAlias((size_t)idx, advName)) { writeErr(ERR_CODE_FILE_IO_ERROR); return; }
             ContactStore::instance().loadFromConfig();   // GET_CONTACTS picks up the new alias
+            // Rename the on-device conversation too (ensureConversation returns the existing
+            // one; overwrite its label) and redraw the convo list if it's showing.
+            MessageStore::instance().ensureConversation(
+                ConvoId{ConvoId::DM, pubKeyToShortId(pubKey)}, advName, false).displayName = advName;
+            UIManager::instance().refreshConvoList();
         }
         writeOK();
         return;
@@ -690,17 +710,25 @@ void CompanionService::cmdAddUpdateContact(size_t len) {
     if (len >= 144) { memcpy(&ci.gps_lat, &_cmd[136], 4); memcpy(&ci.gps_lon, &_cmd[140], 4); }
     mesh->addContact(ci);
     ContactStore::instance().loadFromConfig();
+    // Create the on-device conversation (the convo list renders conversations, built at boot
+    // for every contact) and redraw it if showing — so the new contact appears live, not just
+    // after a reboot. Mirrors main.cpp's boot-time ensureConversation for contacts.
+    MessageStore::instance().ensureConversation(
+        ConvoId{ConvoId::DM, pubKeyToShortId(pubKey)}, cc.alias, false);
+    UIManager::instance().refreshConvoList();
     writeOK();
 }
 
 // CMD_REMOVE_CONTACT -> RESP_CODE_OK/ERR. Drop a contact, its chat history, and any held
-// advert. Live (no reboot), mirroring the on-device SettingsScreen remove. [1..32]=pubkey.
+// advert. Reboots to apply (the app reconnects), mirroring the on-device SettingsScreen remove
+// and keeping the model uniform across contacts and channels: adding/editing is live, removing
+// reboots. (MeshCore does expose a live removeContact, but we reboot for one predictable rule
+// and a clean store/UI rebuild — channel removal has no live path, so this matches it.)
+// [1..32]=pubkey.
 void CompanionService::cmdRemoveContact(size_t len) {
     if (len < 33) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
     auto& mgr = ConfigManager::instance();
     if (!mgr.config().permissions.conversationManagement) { writeErr(ERR_CODE_BAD_STATE); return; }
-    auto* mesh = MeshManager::instance().mesh();
-    if (!mesh) { writeErr(ERR_CODE_BAD_STATE); return; }
 
     const uint8_t* pubKey = &_cmd[1];
     int idx = mgr.findContactIndexByKey(pubKey);
@@ -708,10 +736,9 @@ void CompanionService::cmdRemoveContact(size_t len) {
 
     String shortId = pubKeyToShortId(pubKey);
     if (!mgr.removeContactAt((size_t)idx)) { writeErr(ERR_CODE_FILE_IO_ERROR); return; }
-    if (ContactInfo* ci = mesh->lookupContactByPubKey(pubKey, PUB_KEY_SIZE)) mesh->removeContact(*ci);
     MessageStore::instance().removeConversation(ConvoId{ConvoId::DM, shortId});
     MeshManager::instance().deleteAdvertBlob(pubKey);
-    ContactStore::instance().loadFromConfig();
+    _rebootAtMs = millis() + REBOOT_DELAY_MS;
     writeOK();
 }
 

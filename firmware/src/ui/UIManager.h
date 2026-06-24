@@ -63,6 +63,12 @@ public:
     // on-device too. Returns the packet ID (0 on failure).
     uint32_t handleSend(const ConvoId& id, const String& text);
 
+    // Redraw the conversation list if it is the active screen. Called after a
+    // companion command live-adds/edits a conversation (contact or channel) so the
+    // on-device list reflects it without waiting for the 10s auto-refresh. Safe to
+    // call any time — no-ops when the convo list isn't showing.
+    void refreshConvoList();
+
     // Retry a failed DM
     void handleRetry(const ConvoId& id, const String& text, uint32_t oldPacketId);
 

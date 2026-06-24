@@ -113,7 +113,7 @@ Once MCLite is installed you can update it without a computer:
 
 ### Companion mode
 
-Use a phone, desktop, or CLI as a companion to the radio while the device keeps working normally — messages appear in **both** places at once. MCLite speaks the standard MeshCore companion protocol over three transports (**one active at a time**): **Bluetooth**, **WiFi**, and **USB**. Messaging is **read-only for config** — a companion can read contacts/channels and send/receive messages, but can't change radio settings, contacts, channels, or keys.
+Use a phone, desktop, or CLI as a companion to the radio while the device keeps working normally — messages appear in **both** places at once. MCLite speaks the standard MeshCore companion protocol over three transports (**one active at a time**): **Bluetooth**, **WiFi**, and **USB**. A companion can send/receive messages and **manage conversations** — add, rename, and remove contacts; add and remove channels; log into rooms — all gated by the `permissions.conversation_management` setting. **Device settings stay read-only**: a companion can't change radio parameters or the device identity/keys (set those in the config file).
 
 #### Bluetooth (official mobile apps)
 
@@ -148,6 +148,7 @@ While USB companion is active the device's **serial debug logging is muted** —
 
 - **One transport, one client at a time** — the modes are mutually exclusive by design (the protocol is single-session). Turning one on turns the others off.
 - **WiFi vs Bluetooth can't run together** — they share the 2.4 GHz radio and there isn't enough RAM for both. Enabling Bluetooth turns WiFi off; once Bluetooth has been used, **switching back to WiFi needs a reboot** (the BLE stack can't be freed at runtime). The WiFi screen shows a notice and a **Reboot** button when this applies.
+- **Conversation management** — one consistent rule for both contacts and channels: **adding and editing apply instantly** (the companion session stays connected, and the change shows on the device's own conversation list and Admin screens right away), while **removing reboots the device** to apply (the app reconnects on its own). The reboot on removal is required for channels — MeshCore offers no way to drop a channel from the running radio, so MCLite rebuilds its channel table from config at boot — and is kept for contact removal too so the behaviour is uniform. Editing a contact from the app changes its **display name** only; per-contact permissions stay in the config file / on-device Admin.
 - **Known limitation** — messages **typed on the device itself** do not appear in the companion app. The MeshCore companion protocol has no event for a firmware-composed message (it assumes the app is the sole composer). Everything else mirrors both ways: received messages and app-sent messages show on the device *and* in the app.
 
 ### Set up your config
