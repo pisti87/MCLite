@@ -282,13 +282,16 @@ bool ConfigManager::parseJson(const String& json) {
             _config.messaging.showTelemetry = defaults::SHOW_TELEMETRY;
         }
 
-        // Canned messages: bool = toggle, array = custom messages (implies enabled)
+        // Canned messages: bool = toggle, array = custom messages (implies enabled).
+        // Clear unconditionally first: load() applyDefaults()-clears before the main parse, but the
+        // .bak recovery path re-parses without it, so the bool/missing branches must not retain a
+        // stale custom list populated by a failed main-file parse.
+        _config.messaging.cannedCustom.clear();
         JsonVariant cm = msg["canned_messages"];
         if (cm.is<bool>()) {
             _config.messaging.cannedMessages = cm.as<bool>();
         } else if (cm.is<JsonArray>()) {
             _config.messaging.cannedMessages = true;
-            _config.messaging.cannedCustom.clear();  // defensive: don't append onto applyDefaults() state
             JsonArray arr = cm.as<JsonArray>();
             for (size_t i = 0; i < arr.size() && i < 8; i++) {
                 _config.messaging.cannedCustom.push_back(arr[i].as<String>());

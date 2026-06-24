@@ -41,7 +41,12 @@ static TransportKey scopeToTransportKey(const String& scope) {
     if (scope == "*" || scope.length() == 0) return tk;
     // Match MeshCore: a bare region name is an implicit hashtag region, so prepend '#' before
     // hashing — RegionMap feeds getAutoKeyFor the '#'-prefixed name, so SHA256("#region")[:16]
-    // is the canonical key. Pass through an explicit '#' (hashtag) or '$' (private) prefix.
+    // is the canonical key. An explicit '#' (public hashtag) passes through and interoperates.
+    // NOTE: a '$' (private) prefix also passes through to SHA256("$name"), but real MeshCore
+    // private regions use a SEPARATELY STORED key (RegionMap::loadKeysFor), NOT a name hash —
+    // so a '$' scope is an MCLite-only convention that scopes MCLite<->MCLite traffic but does
+    // NOT interoperate with a MeshCore private region. The app path (CMD_SET_DEFAULT_FLOOD_SCOPE,
+    // 63) already rejects such mismatches (BAD_STATE); see companion-commands.md.
     String name = (scope[0] == '#' || scope[0] == '$') ? scope : (String("#") + scope);
     uint8_t hash[32];
     mbedtls_sha256((const uint8_t*)name.c_str(), name.length(), hash, 0);

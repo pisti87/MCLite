@@ -978,7 +978,9 @@ void CompanionService::cmdExportContact(size_t len) {
     } else {
         blen = mesh->exportContactBlob(&_cmd[1], blob);   // held advert, 0 if none
     }
-    if (blen <= 0 || blen + 1 > (int)sizeof(_out)) { writeErr(ERR_CODE_NOT_FOUND); return; }
+    // Bound by the protocol max (172), not sizeof(_out) (173): writeFrame() silently drops any
+    // frame > MAX_FRAME_SIZE, so a 172-byte blob (173-byte frame) would vanish with no error.
+    if (blen <= 0 || blen + 1 > MAX_FRAME_SIZE) { writeErr(ERR_CODE_NOT_FOUND); return; }
     _out[0] = RESP_CODE_EXPORT_CONTACT;
     memcpy(&_out[1], blob, blen);
     _iface->writeFrame(_out, blen + 1);
@@ -988,7 +990,10 @@ void CompanionService::cmdExportContact(size_t len) {
 // and lands in Heard Adverts (MCLite curates contacts, never auto-adds) for the user to Save.
 // Gated by conversation_management. [1..]=advert blob.
 void CompanionService::cmdImportContact(size_t len) {
-    if (len <= 1) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    // Require a minimally well-formed advert (pubkey + max path), mirroring the reference
+    // (len > 2+32+64). importContact -> Packet::readFrom reads the header/path bytes before its
+    // own length check, so a short frame would over-read stale bytes from the previous command.
+    if (len <= 2 + PUB_KEY_SIZE + 64) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
     if (!ConfigManager::instance().config().permissions.conversationManagement) { writeErr(ERR_CODE_BAD_STATE); return; }
     auto* mesh = MeshManager::instance().mesh();
     if (!mesh) { writeErr(ERR_CODE_BAD_STATE); return; }
