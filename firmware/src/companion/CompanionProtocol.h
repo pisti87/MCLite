@@ -36,6 +36,19 @@
 //   - CMD_REMOVE_CONTACT — remove a contact (plus its chat history and any held advert).
 //     Reboots to apply, matching channel removal — the uniform model is: adding/editing is
 //     live, removing reboots (the app reconnects).
+// Honored device-settings *writes*, gated by permissions.settings == "full" (the same gate the
+// on-device Admin uses; "restricted"/"none" reject):
+//   - CMD_SET_ADVERT_NAME — set the device/advert name (cfg.deviceName). Live: the name is read
+//     fresh from config on the next advert, so no reboot.
+//   - CMD_SET_RADIO_PARAMS — freq/SF/BW/CR (validated). The repeater flag is rejected (MCLite
+//     isn't a repeater). Reboots to apply (radio re-inits from config at boot).
+//   - CMD_SET_RADIO_TX_POWER — TX power dBm (validated). Reboots to apply.
+//   - CMD_SET_DEVICE_PIN — BLE pairing PIN (0 or 6 digits; 0 regenerates). Reboots (BLE re-init).
+//   - CMD_SET_PATH_HASH_MODE — 1/2/3 bytes per hop (cfg.radio.pathHashMode). Reboots to apply.
+// Deliberately rejected (fall through to UNSUPPORTED_CMD), conflicting with MCLite's design:
+//   SET_ADVERT_LATLON(14) [GPS-based location], SET_TUNING_PARAMS(21), SET_OTHER_PARAMS(38) +
+//   SET_AUTOADD_CONFIG(58/59) [fixed manual-add + per-contact telemetry], EXPORT/IMPORT_PRIVATE_KEY
+//   (23/24), FACTORY_RESET(51), repeater/custom-vars, signing, raw datagrams. See companion-commands.md.
 
 #include <helpers/BaseSerialInterface.h>   // MAX_FRAME_SIZE (172)
 
@@ -64,6 +77,12 @@ enum : uint8_t {
     CMD_REBOOT                 = 19,  // [1..]="reboot"; reboot the device (no response)
     CMD_SEND_LOGIN             = 26,  // [1..32]=32-byte room/repeater pubkey [33..]=password (<=15)
     CMD_SEND_TELEMETRY_REQ     = 39,  // [1..3]=reserved [4..35]=32-byte contact pubkey
+    // Device-settings writes (gate: permissions.settings == "full")
+    CMD_SET_ADVERT_NAME        = 8,   // [1..]=name (<=20)
+    CMD_SET_RADIO_PARAMS       = 11,  // [1..4]=freq kHz u32 [5..8]=bw Hz u32 [9]=sf [10]=cr [11]=repeat(opt, rejected if 1)
+    CMD_SET_RADIO_TX_POWER     = 12,  // [1]=int8 dBm
+    CMD_SET_DEVICE_PIN         = 37,  // [1..4]=u32 PIN (0 or 100000-999999; 0 = regenerate)
+    CMD_SET_PATH_HASH_MODE     = 61,  // [1]=0 (reserved) [2]=mode (0/1/2 -> 1/2/3 bytes per hop)
 };
 
 // ---- Responses (firmware -> app), out_frame[0] ----

@@ -107,6 +107,15 @@ private:
     void cmdRemoveContact(size_t len);      // remove a contact + its history/advert (live, no reboot)
     void cmdShareContact(size_t len);       // re-broadcast a contact's advert (zero hop)
     void cmdReboot();                       // reboot the device (no response)
+
+    // Device-settings writes (gate: permissions.settings == "full"). Name applies live;
+    // radio/TX/path-hash/PIN save to config and reboot to apply (re-applied at boot).
+    bool settingsAllowed() const;           // permissions.settings == "full"
+    void cmdSetAdvertName(size_t len);
+    void cmdSetRadioParams(size_t len);
+    void cmdSetTxPower(size_t len);
+    void cmdSetDevicePin(size_t len);
+    void cmdSetPathHashMode(size_t len);
     void noteSent(uint32_t packetId);   // track a DM awaiting ACK confirmation
 
     // Stream one contact per loop tick while a GET_CONTACTS sync is in progress.

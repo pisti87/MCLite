@@ -35,6 +35,14 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
   are reflected on the **device's own UI** too — a contact/channel added or renamed from the app shows up in the
   on-device conversation list and Admin screens right away, no reboot. In-place editing of a contact's permission
   flags / a channel's settings still arrives alongside on-device editing.
+- **Change device settings from the companion app.** With `permissions.settings` set to `full`, a connected app
+  can now set the **device name**, **radio parameters** (frequency / spreading factor / bandwidth / coding rate),
+  **TX power**, the **BLE pairing PIN**, and the **path-hash mode** (1/2/3 bytes per hop). Values are range-checked;
+  the device name applies instantly, while radio / TX / PIN / path-hash save and apply on a quick reboot (the app
+  reconnects). **Path-hash mode** is especially useful on large meshes — it lets app users match a 3-byte network
+  without hand-editing `config.json` (see #36). A device left at `restricted` or `none` refuses these. Identity
+  keys, advert location (MCLite advertises GPS at the configured precision), and auto-add stay device-managed by
+  design and are rejected.
 
 ## [0.4.0] — 2026-06-22
 

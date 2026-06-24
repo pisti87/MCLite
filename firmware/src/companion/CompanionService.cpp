@@ -103,6 +103,11 @@ void CompanionService::handleFrame(size_t len) {
         case CMD_ADD_UPDATE_CONTACT: cmdAddUpdateContact(len); break;
         case CMD_REMOVE_CONTACT:   cmdRemoveContact(len);   break;
         case CMD_SHARE_CONTACT:    cmdShareContact(len);    break;
+        case CMD_SET_ADVERT_NAME:  cmdSetAdvertName(len);   break;
+        case CMD_SET_RADIO_PARAMS: cmdSetRadioParams(len);  break;
+        case CMD_SET_RADIO_TX_POWER: cmdSetTxPower(len);    break;
+        case CMD_SET_DEVICE_PIN:   cmdSetDevicePin(len);    break;
+        case CMD_SET_PATH_HASH_MODE: cmdSetPathHashMode(len); break;
         case CMD_REBOOT:           cmdReboot();             break;
         case CMD_SYNC_NEXT_MESSAGE: cmdSyncNextMessage();   break;
         case CMD_LOGOUT:           writeOK();               break;   // no room sessions yet
@@ -769,6 +774,104 @@ void CompanionService::cmdShareContact(size_t len) {
 // change, so it's allowed ungated. Reuses the deferred-reboot path (loop() performs the restart).
 void CompanionService::cmdReboot() {
     _rebootAtMs = millis() + REBOOT_DELAY_MS;
+}
+
+// ── Device-settings writes (gate: permissions.settings == "full") ──────────────
+// The same gate the on-device Admin uses for non-basic controls. Current values are
+// reported back to the app via RESP_CODE_SELF_INFO (cmdAppStart), so there are no GET
+// counterparts here. Name applies live (read fresh per advert); radio/TX/path-hash/PIN
+// persist to config and reboot to re-apply at boot (initRadio / ensureBlePin).
+
+bool CompanionService::settingsAllowed() const {
+    return ConfigManager::instance().config().permissions.settings == "full";
+}
+
+// CMD_SET_ADVERT_NAME -> OK/ERR. [1..]=name (truncated to 20, MCLite's deviceName cap).
+// Live: the advert/group sends read cfg.deviceName fresh, so the next advert uses it.
+void CompanionService::cmdSetAdvertName(size_t len) {
+    if (len < 2) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    if (!settingsAllowed()) { writeErr(ERR_CODE_BAD_STATE); return; }
+    size_t nlen = len - 1;
+    if (nlen > 20) nlen = 20;                          // matches the config-load cap
+    char nameBuf[21];
+    memcpy(nameBuf, &_cmd[1], nlen);
+    nameBuf[nlen] = '\0';
+    auto& cfg = ConfigManager::instance().config();
+    String prev = cfg.deviceName;
+    cfg.deviceName = String(nameBuf);
+    if (!ConfigManager::instance().save()) { cfg.deviceName = prev; writeErr(ERR_CODE_FILE_IO_ERROR); return; }
+    writeOK();
+}
+
+// CMD_SET_RADIO_PARAMS -> OK/ERR. [1..4]=freq kHz u32, [5..8]=bw Hz u32, [9]=sf, [10]=cr,
+// optional [11]=repeat. Reboots to apply (radio re-inits from config at boot).
+void CompanionService::cmdSetRadioParams(size_t len) {
+    if (len < 11) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    if (!settingsAllowed()) { writeErr(ERR_CODE_BAD_STATE); return; }
+    uint32_t freq, bw;
+    memcpy(&freq, &_cmd[1], 4);
+    memcpy(&bw,   &_cmd[5], 4);
+    uint8_t sf = _cmd[9], cr = _cmd[10];
+    uint8_t repeat = (len > 11) ? _cmd[11] : 0;
+    if (repeat) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }   // MCLite isn't a repeater
+    if (!(freq >= 150000 && freq <= 2500000 && sf >= 5 && sf <= 12 &&
+          cr >= 5 && cr <= 8 && bw >= 7000 && bw <= 500000)) {
+        writeErr(ERR_CODE_ILLEGAL_ARG); return;
+    }
+    auto& r = ConfigManager::instance().config().radio;
+    RadioConfig prev = r;
+    r.frequency       = (float)freq / 1000.0f;        // kHz -> MHz
+    r.bandwidth       = (float)bw / 1000.0f;          // Hz  -> kHz
+    r.spreadingFactor = sf;
+    r.codingRate      = cr;
+    if (!ConfigManager::instance().save()) { r = prev; writeErr(ERR_CODE_FILE_IO_ERROR); return; }
+    _rebootAtMs = millis() + REBOOT_DELAY_MS;
+    writeOK();
+}
+
+// CMD_SET_RADIO_TX_POWER -> OK/ERR. [1]=int8 dBm. Reboots to apply.
+void CompanionService::cmdSetTxPower(size_t len) {
+    if (len < 2) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    if (!settingsAllowed()) { writeErr(ERR_CODE_BAD_STATE); return; }
+    int8_t power = (int8_t)_cmd[1];
+    if (power < -9 || power > LORA_TX_POWER) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    auto& r = ConfigManager::instance().config().radio;
+    int8_t prev = r.txPower;
+    r.txPower = power;
+    if (!ConfigManager::instance().save()) { r.txPower = prev; writeErr(ERR_CODE_FILE_IO_ERROR); return; }
+    _rebootAtMs = millis() + REBOOT_DELAY_MS;
+    writeOK();
+}
+
+// CMD_SET_DEVICE_PIN -> OK/ERR. [1..4]=u32 PIN, 0 or 6-digit (0 = regenerate next boot).
+// Reboots so BLE re-inits with the new PIN (ensureBlePin).
+void CompanionService::cmdSetDevicePin(size_t len) {
+    if (len < 5) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    if (!settingsAllowed()) { writeErr(ERR_CODE_BAD_STATE); return; }
+    uint32_t pin;
+    memcpy(&pin, &_cmd[1], 4);
+    if (!(pin == 0 || (pin >= 100000 && pin <= 999999))) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    auto& ble = ConfigManager::instance().config().ble;
+    uint32_t prev = ble.pin;
+    ble.pin = pin;
+    if (!ConfigManager::instance().save()) { ble.pin = prev; writeErr(ERR_CODE_FILE_IO_ERROR); return; }
+    _rebootAtMs = millis() + REBOOT_DELAY_MS;
+    writeOK();
+}
+
+// CMD_SET_PATH_HASH_MODE -> OK/ERR. [1]=0 (reserved), [2]=mode (0/1/2 -> 1/2/3 bytes/hop).
+// Reboots to apply. Lets app users fix the large-mesh case (#36) without editing config.json.
+void CompanionService::cmdSetPathHashMode(size_t len) {
+    if (len < 3 || _cmd[1] != 0) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    if (!settingsAllowed()) { writeErr(ERR_CODE_BAD_STATE); return; }
+    uint8_t mode = _cmd[2];
+    if (mode > 2) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }
+    auto& r = ConfigManager::instance().config().radio;
+    uint8_t prev = r.pathHashMode;
+    r.pathHashMode = mode;
+    if (!ConfigManager::instance().save()) { r.pathHashMode = prev; writeErr(ERR_CODE_FILE_IO_ERROR); return; }
+    _rebootAtMs = millis() + REBOOT_DELAY_MS;
+    writeOK();
 }
 
 // CMD_SYNC_NEXT_MESSAGE -> next queued message, or NO_MORE_MESSAGES.
