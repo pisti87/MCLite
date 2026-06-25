@@ -185,6 +185,12 @@ private:
     int _offlineLen = 0;
     void enqueueOffline(const uint8_t* frame, int len);
     void tickleMsgWaiting();
+    // Send the next SYNC response (a queued message, or NO_MORE_MESSAGES). Only pops
+    // the message once the transport confirms it accepted the frame, so a silently
+    // dropped frame (WiFi send_queue full) never loses a message. Returns false if the
+    // transport can't take it right now — the caller defers via _syncResponsePending.
+    bool trySendSyncResponse();
+    bool _syncResponsePending = false;   // a SYNC reply is owed but the transport was full/busy
 
     // Build a CONTACT/CHANNEL_MSG_RECV[_V3] frame into _out; returns its length.
     int  buildContactRecvFrame(const uint8_t* senderPubKey, uint32_t timestamp, const char* text);

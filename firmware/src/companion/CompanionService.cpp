@@ -36,6 +36,7 @@ CompanionService& CompanionService::instance() {
 void CompanionService::resetSessionState() {
     _appVer = 0;
     _offlineLen = 0;
+    _syncResponsePending = false;
     _contactsIterating = false;
     _contactCursor = 0;
     _contactCount = 0;
@@ -89,8 +90,13 @@ void CompanionService::loop() {
 
     size_t len = _iface->checkRecvFrame(_cmd);
     if (len > 0) { handleFrame(len); return; }
-    // No inbound frame — drive any in-progress GET_CONTACTS stream, one frame per
-    // tick, while the transport's send queue has room.
+    // No inbound frame — drive deferred work one frame per tick, as the transport's
+    // send queue drains. A SYNC reply owed but previously un-sendable (queue full)
+    // is retried here so it lands without the app re-asking.
+    if (_syncResponsePending) {
+        if (trySendSyncResponse()) _syncResponsePending = false;
+        return;
+    }
     if (_contactsIterating && !_iface->isWriteBusy()) pumpContacts();
 }
 
@@ -1078,17 +1084,30 @@ void CompanionService::cmdGetAutoaddConfig() {
 }
 
 // CMD_SYNC_NEXT_MESSAGE -> next queued message, or NO_MORE_MESSAGES.
+// Lossless: the message is only removed from the queue once the transport confirms it
+// accepted the frame. The WiFi transport silently drops frames when its 4-slot
+// send_queue is full (and reports isWriteBusy()==false), so writing-then-popping
+// unconditionally lost messages on connect. If the frame can't go out now, we keep it
+// queued and re-drive from loop() once the send_queue drains — the app's single SYNC
+// request is still answered, without needing it to re-ask.
 void CompanionService::cmdSyncNextMessage() {
+    if (!trySendSyncResponse()) _syncResponsePending = true;
+}
+
+bool CompanionService::trySendSyncResponse() {
+    if (!clientConnected()) return true;            // client gone — nothing owed
+    if (_iface->isWriteBusy()) return false;        // backpressure (paces BLE; no-op on WiFi)
+
     if (_offlineLen <= 0) {
-        _out[0] = RESP_CODE_NO_MORE_MESSAGES;
-        _iface->writeFrame(_out, 1);
-        return;
+        uint8_t f = RESP_CODE_NO_MORE_MESSAGES;
+        return _iface->writeFrame(&f, 1) == 1;      // defer if the transport can't take it
     }
-    // Pop the front (FIFO) and send it.
+    // Pop the front (FIFO) only on a confirmed accept.
     const OfflineMsg& m = _offline[0];
-    _iface->writeFrame(m.buf, m.len);
+    if (_iface->writeFrame(m.buf, m.len) != m.len) return false;   // not sent — keep it queued
     _offlineLen--;
     for (int i = 0; i < _offlineLen; i++) _offline[i] = _offline[i + 1];
+    return true;
 }
 
 void CompanionService::enqueueOffline(const uint8_t* frame, int len) {
