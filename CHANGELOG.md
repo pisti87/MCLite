@@ -65,6 +65,16 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
   route), **export a contact** (`CMD_EXPORT_CONTACT` — your own or a known contact's signed advert, as a portable
   blob), and **import a contact** (`CMD_IMPORT_CONTACT` — the imported advert appears in **Heard Adverts** to review
   and save, keeping the contact list curated). Import is gated by `permissions.conversation_management`.
+- **Explicit un-scoped flood scope from the app.** The companion app can now force flood sends out un-scoped,
+  independent of the configured region (`CMD_SET_FLOOD_SCOPE_KEY` explicit-unscoped variant). Session-only —
+  reverts to the configured scope on reboot. MCLite now advertises companion firmware-version **12** so apps
+  surface the option. Gated by `permissions.settings == "full"`.
+
+### Changed
+- **Updated the MeshCore library 1.15 → 1.16.** Brings RadioLib 7.6, an SF-dependent preamble (32 symbols for
+  SF ≤ 8, matching the rest of the network for better low-SF link reliability), and upstream fixes (EU
+  client-repeat frequency, WiFi reconnect, repeater neighbor-discovery when path-hash mode ≠ 0). Confirmed
+  interoperable with 1.16 nodes — including message ACKs — at SF8.
 
 ### Fixed
 - **Region scope without a leading `#` now matches MeshCore.** A region/flood-scope written as a bare name (e.g.
