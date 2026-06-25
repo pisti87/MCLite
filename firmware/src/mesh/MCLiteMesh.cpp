@@ -1006,6 +1006,13 @@ bool MCLiteMesh::sendStatusReqByKey(const uint8_t* pubKey, uint32_t& tag, uint32
 bool MCLiteMesh::sendTracePath(uint32_t tag, uint32_t auth, uint8_t flags,
                                const uint8_t* path, uint8_t path_len, uint32_t& estTimeout) {
     if (!_ready) return false;
+    // createTrace seeds payload_len = 9 (tag+auth+flags); sendDirect() then appends the
+    // whole path to the payload (trace path is NOT bounded by MAX_PATH_SIZE). Reject any
+    // path that wouldn't fit so the append can't overflow Packet::payload[MAX_PACKET_PAYLOAD].
+    if ((uint32_t)path_len + 9 > MAX_PACKET_PAYLOAD) {
+        LOGF("[MCLiteMesh] Trace: path too long (%u)\n", path_len);
+        return false;
+    }
     mesh::Packet* pkt = createTrace(tag, auth, flags);
     if (!pkt) {
         LOGLN("[MCLiteMesh] Trace: packet pool empty");
