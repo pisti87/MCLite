@@ -17,6 +17,7 @@ Import("env")
 
 import re
 import os
+import glob
 
 # Map PIO env name → output binary name prefix.
 # Must match the web flasher's TARGETS[*].binaryPattern regexes.
@@ -46,6 +47,16 @@ def merge_bin(source, target, env):
     build_dir = env.subst("$BUILD_DIR")
     output_name = f"{bin_prefix}-v{version}.bin"
     output_path = os.path.join(build_dir, output_name)
+
+    # Remove any previously-built versioned binaries (e.g. an older MCLITE_VERSION
+    # restored from a CI build cache, whose cache key is the platformio.ini hash and so
+    # survives a version-only bump). Otherwise stale + new bins coexist and CI's
+    # "exactly one {prefix}-v*.bin" check fails.
+    for stale in glob.glob(os.path.join(build_dir, f"{bin_prefix}-v*.bin")):
+        try:
+            os.remove(stale)
+        except OSError:
+            pass
 
     # ESP32-S3 flash layout offsets
     bootloader_offset = 0x0000
