@@ -102,6 +102,7 @@ void CompanionService::handleFrame(size_t len) {
         case CMD_SEND_TXT_MSG:     cmdSendTxtMsg(len);      break;
         case CMD_SEND_CHANNEL_TXT_MSG: cmdSendChannelTxtMsg(len); break;
         case CMD_SEND_TELEMETRY_REQ: cmdSendTelemetryReq(len); break;
+        case CMD_SEND_ANON_REQ:      cmdSendAnonReq(len);      break;
         case CMD_SEND_LOGIN:       cmdSendLogin(len);       break;
         case CMD_GET_DEVICE_TIME:  cmdGetDeviceTime();      break;
         case CMD_SET_DEVICE_TIME:  cmdSetDeviceTime(len);   break;
@@ -332,6 +333,46 @@ void CompanionService::onTelemetryResponse(const uint8_t* pubKey, const uint8_t*
     _iface->writeFrame(_out, 8 + (n > 0 ? n : 0));
 }
 
+// CMD_SEND_ANON_REQ -> RESP_CODE_SENT. Layout: [1..32]=node pubkey [33..]=request data.
+// Sends an anonymous request over the mesh to a node addressed only by pubkey (a known
+// contact or not — a non-contact gets a transient ADV_TYPE_NONE slot). The async reply
+// arrives as PUSH_CODE_BINARY_RESPONSE (see onAnonResponse). Gated by settings==full
+// (advanced capability) and bounded by a single pending slot.
+void CompanionService::cmdSendAnonReq(size_t len) {
+    if (len <= 1 + PUB_KEY_SIZE) { writeErr(ERR_CODE_ILLEGAL_ARG); return; }  // need key + >=1 data byte
+    if (!settingsAllowed()) { writeErr(ERR_CODE_BAD_STATE); return; }
+    if (MeshManager::instance().isAnonReqPending()) { writeErr(ERR_CODE_BAD_STATE); return; }
+
+    const uint8_t* pubKey = &_cmd[1];
+    const uint8_t* data   = &_cmd[1 + PUB_KEY_SIZE];
+    uint8_t dataLen       = (uint8_t)(len - (1 + PUB_KEY_SIZE));
+
+    uint32_t tag = 0, est_timeout = 0;
+    if (!MeshManager::instance().sendAnonReqByKey(pubKey, data, dataLen, tag, est_timeout)) {
+        writeErr(ERR_CODE_BAD_STATE); return;
+    }
+    // RESP_CODE_SENT: [1]=route(0) [2..5]=tag (real — the app matches the later
+    // PUSH_CODE_BINARY_RESPONSE by it) [6..9]=est_timeout.
+    _out[0] = RESP_CODE_SENT;
+    _out[1] = 0;
+    memcpy(&_out[2], &tag, 4);
+    memcpy(&_out[6], &est_timeout, 4);
+    _iface->writeFrame(_out, 10);
+}
+
+// MeshManager forwards an anon-request reply here -> PUSH_CODE_BINARY_RESPONSE.
+// Layout: [0]=0x8C [1]=reserved(0) [2..5]=tag [6..]=verbatim response payload.
+void CompanionService::onAnonResponse(uint32_t tag, const uint8_t* data, uint8_t len) {
+    if (!clientConnected()) return;
+    int n = len;
+    if (n > MAX_FRAME_SIZE - 6) n = MAX_FRAME_SIZE - 6;   // clamp defensively
+    _out[0] = PUSH_CODE_BINARY_RESPONSE;
+    _out[1] = 0;
+    memcpy(&_out[2], &tag, 4);
+    if (n > 0 && data) memcpy(&_out[6], data, n);
+    _iface->writeFrame(_out, 6 + (n > 0 ? n : 0));
+}
+
 // CMD_SEND_LOGIN -> RESP_CODE_SENT. Layout: [1..32]=32-byte room pubkey, [33..]=password
 // (remainder, <=15). Logs into an already-configured room/repeater over the mesh (reuses the
 // on-device loginRoom path). A blank app password uses the configured one; a wrong non-blank
@@ -527,12 +568,20 @@ void CompanionService::cmdGetContacts(size_t len) {
     if (len >= 5) memcpy(&since, &_cmd[1], 4);
     _contactsSince = since;
 
-    uint32_t count = (uint32_t)mesh->getNumContacts();
+    // Reported count excludes transient ADV_TYPE_NONE (anon-req) contacts, which we
+    // never expose to the app. _contactCount stays the raw total so the cursor still
+    // walks the whole array — pumpContacts skips the anon entries while streaming.
+    int total = mesh->getNumContacts();
+    uint32_t count = 0;
+    for (int i = 0; i < total; i++) {
+        ContactInfo* c = mesh->getContactByIdx(i);
+        if (c && c->type != ADV_TYPE_NONE) count++;
+    }
     _out[0] = RESP_CODE_CONTACTS_START;
     memcpy(&_out[1], &count, 4);
     _iface->writeFrame(_out, 5);
 
-    _contactCount      = (int)count;
+    _contactCount      = total;
     _contactCursor     = 0;
     _mostRecentLastmod = 0;
     _contactsIterating = true;
@@ -545,6 +594,7 @@ void CompanionService::pumpContacts() {
     while (_contactCursor < _contactCount) {
         ContactInfo* c = mesh->getContactByIdx(_contactCursor++);
         if (!c) continue;
+        if (c->type == ADV_TYPE_NONE) continue;         // skip transient anon-req contacts
         // Incremental sync ('since' > 0) skips unchanged contacts. A full sync
         // ('since' == 0) returns everything — MCLite's config-registered contacts
         // carry lastmod == 0, so a "<= since" test would wrongly drop them all.

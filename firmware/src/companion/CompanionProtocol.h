@@ -81,6 +81,7 @@ enum : uint8_t {
     CMD_REBOOT                 = 19,  // [1..]="reboot"; reboot the device (no response)
     CMD_SEND_LOGIN             = 26,  // [1..32]=32-byte room/repeater pubkey [33..]=password (<=15)
     CMD_SEND_TELEMETRY_REQ     = 39,  // [1..3]=reserved [4..35]=32-byte contact pubkey
+    CMD_SEND_ANON_REQ          = 57,  // [1..32]=pubkey [33..]=request data; reply via PUSH_CODE_BINARY_RESPONSE (ver13+)
     // Device-settings writes (gate: permissions.settings == "full")
     CMD_SET_ADVERT_NAME        = 8,   // [1..]=name (<=20)
     CMD_SET_RADIO_PARAMS       = 11,  // [1..4]=freq kHz u32 [5..8]=bw Hz u32 [9]=sf [10]=cr [11]=repeat(opt, rejected if 1)
@@ -126,6 +127,7 @@ enum : uint8_t {
     PUSH_CODE_LOGIN_SUCCESS    = 0x85,  // [1]=perms [2..7]=prefix [8..11]=tag [12]=v7 ACL perms [13]=fw level
     PUSH_CODE_LOGIN_FAIL       = 0x86,  // [1]=reserved [2..7]=pubkey prefix
     PUSH_CODE_TELEMETRY_RESPONSE = 0x8B,  // [1]=reserved [2..7]=pubkey prefix [8..]=raw LPP
+    PUSH_CODE_BINARY_RESPONSE  = 0x8C,  // reply to CMD_SEND_ANON_REQ: [1]=reserved [2..5]=tag [6..]=response payload
 };
 
 // ---- Error codes (second byte after RESP_CODE_ERR) ----
@@ -138,12 +140,12 @@ enum : uint8_t {
     ERR_CODE_ILLEGAL_ARG       = 6,
 };
 
-// Firmware/protocol version code we advertise in RESP_CODE_DEVICE_INFO. 12 = the
+// Firmware/protocol version code we advertise in RESP_CODE_DEVICE_INFO. 13 = the
 // companion-v1.16.0 level for the features we implement: explicit-unscoped flood
-// scope (CMD_SET_FLOOD_SCOPE_KEY [1]=1). NOTE: do not raise to 13 until anon
-// request/response to non-contact nodes is implemented. The negotiated app version
-// is tracked per session.
-static constexpr uint8_t COMPANION_FW_VER_CODE = 12;
+// scope (CMD_SET_FLOOD_SCOPE_KEY [1]=1, ver 12) and anonymous request/response to
+// non-contact nodes (CMD_SEND_ANON_REQ, ver 13). The negotiated app version is
+// tracked per session.
+static constexpr uint8_t COMPANION_FW_VER_CODE = 13;
 
 // Advert type this node identifies as (ADV_TYPE_CHAT in AdvertDataHelpers.h).
 static constexpr uint8_t COMPANION_ADV_TYPE_CHAT = 1;

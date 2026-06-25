@@ -25,6 +25,7 @@ using OnAdvertCallback     = std::function<void(const uint8_t* senderKey)>;
 using OnTelemetryCallback  = std::function<void(const uint8_t* pubKey, const TelemetryData& data)>;
 using OnTelemetryRawCallback = std::function<void(const uint8_t* pubKey, const uint8_t* lpp, uint8_t lppLen)>;
 using OnTelemetryRetryCallback = std::function<void(uint32_t newTimeoutMs)>;
+using OnAnonResponseCallback = std::function<void(uint32_t tag, const uint8_t* data, uint8_t len)>;
 using OnRoomMessageCallback = std::function<void(size_t roomIdx,
                                                   const String& roomName,
                                                   const uint8_t* senderPrefix /* 4 B */,
@@ -57,6 +58,7 @@ public:
     void onTelemetry(OnTelemetryCallback cb)  { _onTelemetry = cb; }
     void onTelemetryRaw(OnTelemetryRawCallback cb) { _onTelemetryRaw = cb; }
     void onTelemetryRetry(OnTelemetryRetryCallback cb) { _onTelemetryRetry = cb; }
+    void onAnonResponse(OnAnonResponseCallback cb) { _onAnonResponse = cb; }
     void onRoomMessage(OnRoomMessageCallback cb) { _onRoomMsg = cb; }
     void onRoomLogin(OnRoomLoginCallback cb)     { _onRoomLogin = cb; }
 
@@ -77,6 +79,13 @@ public:
     bool requestTelemetry(size_t contactIndex, uint32_t& estTimeout);
     // Same, addressed by 32-byte pubkey (companion app path).
     bool requestTelemetryByKey(const uint8_t* pubKey, uint32_t& estTimeout);
+
+    // Send an anonymous request to a node by pubkey (companion app path). Fills
+    // tag + estTimeout; the reply arrives via the onAnonResponse callback.
+    bool sendAnonReqByKey(const uint8_t* pubKey, const uint8_t* data, uint8_t len,
+                          uint32_t& tag, uint32_t& estTimeout);
+    // True while an anonymous request is awaiting a reply (single-slot).
+    bool isAnonReqPending() const;
 
     // ─── Contact sharing ───
     // Re-broadcast a contact's signed advert at zero hop so nearby nodes can add
@@ -138,6 +147,7 @@ private:
     OnTelemetryCallback _onTelemetry;
     OnTelemetryRawCallback _onTelemetryRaw;
     OnTelemetryRetryCallback _onTelemetryRetry;
+    OnAnonResponseCallback _onAnonResponse;
     OnRoomMessageCallback _onRoomMsg;
     OnRoomLoginCallback   _onRoomLogin;
 

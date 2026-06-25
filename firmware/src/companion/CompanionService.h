@@ -72,6 +72,11 @@ public:
     // app parses it). Direct push; no-op when no client is connected. pubKey is 32 B.
     void onTelemetryResponse(const uint8_t* pubKey, const uint8_t* lpp, uint8_t lppLen);
 
+    // Anon-request bridge: MeshManager forwards a CMD_SEND_ANON_REQ reply here. The
+    // client gets PUSH_CODE_BINARY_RESPONSE keyed by the request tag (it matched the
+    // tag from RESP_CODE_SENT). Direct push; no-op when no client is connected.
+    void onAnonResponse(uint32_t tag, const uint8_t* data, uint8_t len);
+
     // Room-login bridge: MeshManager forwards a room/repeater login response here.
     // Drives PUSH_CODE_LOGIN_SUCCESS/FAIL, but only for logins the app initiated
     // (CMD_SEND_LOGIN) — a background/on-device auto-login pushes nothing. Also runs
@@ -102,6 +107,7 @@ private:
     void cmdSendTxtMsg(size_t len);
     void cmdSendChannelTxtMsg(size_t len);
     void cmdSendTelemetryReq(size_t len);   // request telemetry from a contact (over the mesh)
+    void cmdSendAnonReq(size_t len);        // anonymous request to a node by pubkey (over the mesh)
     void cmdSendLogin(size_t len);          // log into an already-configured room/repeater
     void cmdSetChannel(size_t len);         // add a channel (or remove via empty name); reboots to apply
     void cmdAddUpdateContact(size_t len);   // add a contact, or edit an existing one's name (live, no reboot)

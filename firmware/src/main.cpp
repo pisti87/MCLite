@@ -390,6 +390,11 @@ static void setupMeshCallbacks() {
         CompanionService::instance().onTelemetryResponse(pubKey, lpp, lppLen);
     });
 
+    // Forward an anonymous-request reply to the companion app (PUSH_CODE_BINARY_RESPONSE).
+    mesh.onAnonResponse([](uint32_t tag, const uint8_t* data, uint8_t len) {
+        CompanionService::instance().onAnonResponse(tag, data, len);
+    });
+
     mesh.onTelemetryRetry([](uint32_t newTimeoutMs) {
         UIManager::instance().onTelemetryRetry(newTimeoutMs);
     });

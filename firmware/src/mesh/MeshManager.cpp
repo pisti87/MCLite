@@ -140,6 +140,11 @@ void MeshManager::wireCallbacks() {
         if (_onTelemetryRetry) _onTelemetryRetry(newTimeoutMs);
     });
 
+    // Anonymous-request reply (companion app forwards it as PUSH_CODE_BINARY_RESPONSE)
+    _mesh->onAnonResponse([this](uint32_t tag, const uint8_t* data, uint8_t len) {
+        if (_onAnonResponse) _onAnonResponse(tag, data, len);
+    });
+
     // Advertisement received
     _mesh->onAdvert([this](const ContactInfo& contact, bool isNew) {
         // Update last-seen in our contact store
@@ -349,6 +354,16 @@ bool MeshManager::requestTelemetry(size_t contactIndex, uint32_t& estTimeout) {
 bool MeshManager::requestTelemetryByKey(const uint8_t* pubKey, uint32_t& estTimeout) {
     if (!_mesh || !_radioReady) return false;
     return _mesh->requestTelemetryByKey(pubKey, estTimeout);
+}
+
+bool MeshManager::sendAnonReqByKey(const uint8_t* pubKey, const uint8_t* data, uint8_t len,
+                                   uint32_t& tag, uint32_t& estTimeout) {
+    if (!_mesh || !_radioReady) return false;
+    return _mesh->sendAnonReqByKey(pubKey, data, len, tag, estTimeout);
+}
+
+bool MeshManager::isAnonReqPending() const {
+    return _mesh && _mesh->anonReqPending();
 }
 
 void MeshManager::clearPendingTelemetry() {

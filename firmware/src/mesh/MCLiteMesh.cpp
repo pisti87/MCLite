@@ -932,6 +932,39 @@ bool MCLiteMesh::outboundBusy() const {
     return _mgr && _mgr->getOutboundCount(_ms->getMillis()) > 0;
 }
 
+bool MCLiteMesh::sendAnonReqByKey(const uint8_t* pubKey, const uint8_t* data, uint8_t len,
+                                  uint32_t& tag, uint32_t& estTimeout) {
+    if (!_ready || !pubKey || !data || len == 0) return false;
+
+    // Resolve to a known contact, or register a transient anon contact for the send.
+    // ADV_TYPE_NONE is never persisted (MCLite only writes config-defined contacts,
+    // shouldAutoAddContactType() stays false) and is filtered out of GET_CONTACTS.
+    ContactInfo* ci = lookupContactByPubKey(pubKey, PUB_KEY_SIZE);
+    ContactInfo anon;
+    if (!ci) {
+        memset(&anon, 0, sizeof(anon));
+        memcpy(anon.id.pub_key, pubKey, PUB_KEY_SIZE);
+        anon.out_path_len = 0;          // zero-hop direct by default
+        anon.type = ADV_TYPE_NONE;      // unknown / transient (mirrors companion_radio)
+        if (!addContact(anon)) {
+            LOGLN("[MCLiteMesh] Anon req: no contact slot");
+            return false;
+        }
+        ci = &anon;                     // local struct as recipient, like the reference
+    }
+
+    tag = 0;
+    int result = sendAnonReq(*ci, data, len, tag, estTimeout);
+    if (result == MSG_SEND_FAILED) {
+        LOGF("[MCLiteMesh] Anon req send failed to %s\n", ci->name);
+        return false;
+    }
+    _pendingAnonTag = tag;
+    memcpy(_pendingAnonKey, ci->id.pub_key, PUB_KEY_SIZE);
+    LOGF("[MCLiteMesh] Anon req sent (tag=%u, timeout=%ums)\n", tag, estTimeout);
+    return true;
+}
+
 bool MCLiteMesh::requestTelemetry(size_t contactIdx, uint32_t& estTimeout) {
     if (!_ready) return false;
 
@@ -1102,6 +1135,21 @@ void MCLiteMesh::onContactResponse(const ContactInfo& contact,
 
     // Need at least 4 bytes (reflected timestamp) + some payload
     if (len <= 4) return;
+
+    // Anonymous-request reply (CMD_SEND_ANON_REQ): match the reflected tag + sender
+    // key and forward the verbatim payload to the companion. Checked BEFORE the
+    // telemetry path so it isn't swallowed by the "no pending telemetry" early return.
+    {
+        uint32_t anonTag;
+        memcpy(&anonTag, data, 4);
+        if (_pendingAnonTag != 0 && anonTag == _pendingAnonTag &&
+            memcmp(contact.id.pub_key, _pendingAnonKey, PUB_KEY_SIZE) == 0) {
+            _pendingAnonTag = 0;
+            memset(_pendingAnonKey, 0, PUB_KEY_SIZE);
+            if (_onAnonResponse) _onAnonResponse(anonTag, data + 4, len - 4);
+            return;
+        }
+    }
 
     // Validate: must have a pending request, from the expected contact
     if (_pendingTelemTag == 0) {

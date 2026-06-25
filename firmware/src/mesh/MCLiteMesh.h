@@ -36,6 +36,9 @@ using MeshTelemetryCb = std::function<void(const ContactInfo& contact, const Tel
 // companion app, which forwards the verbatim LPP to the phone for it to parse.
 using MeshTelemetryRawCb = std::function<void(const uint8_t* pubKey, const uint8_t* lpp, uint8_t lppLen)>;
 using MeshTelemetryRetryCb = std::function<void(uint32_t newTimeoutMs)>;
+// Raw reply to an anonymous request (CMD_SEND_ANON_REQ). Carries the request tag
+// (so the app matches it to RESP_CODE_SENT) and the verbatim response payload.
+using MeshAnonRespCb = std::function<void(uint32_t tag, const uint8_t* data, uint8_t len)>;
 using MeshRoomMsgCb   = std::function<void(const ContactInfo& contact,
                                             const uint8_t* sender_prefix /* 4 B */,
                                             uint32_t sender_timestamp,
@@ -129,6 +132,7 @@ public:
     void onTelemetry(MeshTelemetryCb cb) { _onTelemetry = cb; }
     void onTelemetryRaw(MeshTelemetryRawCb cb) { _onTelemetryRaw = cb; }
     void onTelemetryRetry(MeshTelemetryRetryCb cb) { _onTelemetryRetry = cb; }
+    void onAnonResponse(MeshAnonRespCb cb) { _onAnonResponse = cb; }
     void onRoomMsg(MeshRoomMsgCb cb)     { _onRoomMsg = cb; }
     void onRoomLogin(MeshRoomLoginCb cb) { _onRoomLogin = cb; }
 
@@ -147,6 +151,14 @@ public:
     // is single-slot, so the auto-refresh scheduler uses this to avoid clobbering
     // a manual request and to serialize its own.
     bool telemetryPending() const { return _pendingTelemTag != 0; }
+
+    // Send an anonymous request (CMD_SEND_ANON_REQ) to a node by pubkey. If the key
+    // isn't a known contact, a transient ADV_TYPE_NONE contact is registered for the
+    // send (not persisted). Fills tag + estTimeout; reply arrives via onAnonResponse.
+    // Single-slot like telemetry. Returns false on send failure.
+    bool sendAnonReqByKey(const uint8_t* pubKey, const uint8_t* data, uint8_t len,
+                          uint32_t& tag, uint32_t& estTimeout);
+    bool anonReqPending() const { return _pendingAnonTag != 0; }
 
     // True if the radio's outbound packet queue still has packets pending.
     bool outboundBusy() const;
@@ -284,11 +296,14 @@ private:
     MeshTelemetryCb _onTelemetry;
     MeshTelemetryRawCb _onTelemetryRaw;
     MeshTelemetryRetryCb _onTelemetryRetry;
+    MeshAnonRespCb  _onAnonResponse;
     MeshRoomMsgCb   _onRoomMsg;
     MeshRoomLoginCb _onRoomLogin;
     uint32_t        _pendingTelemTag = 0;
     uint8_t         _pendingTelemKey[PUB_KEY_SIZE] = {};
     TelemRetry      _telemRetry;
+    uint32_t        _pendingAnonTag = 0;
+    uint8_t         _pendingAnonKey[PUB_KEY_SIZE] = {};
 
     // Cached BaseChatMesh contact-index per registered room (avoids linear scan
     // on every login/post). Set during begin(); -1 means slot unused.

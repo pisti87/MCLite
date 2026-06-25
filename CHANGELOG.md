@@ -67,8 +67,12 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
   and save, keeping the contact list curated). Import is gated by `permissions.conversation_management`.
 - **Explicit un-scoped flood scope from the app.** The companion app can now force flood sends out un-scoped,
   independent of the configured region (`CMD_SET_FLOOD_SCOPE_KEY` explicit-unscoped variant). Session-only —
-  reverts to the configured scope on reboot. MCLite now advertises companion firmware-version **12** so apps
-  surface the option. Gated by `permissions.settings == "full"`.
+  reverts to the configured scope on reboot. Gated by `permissions.settings == "full"`.
+- **Send a request to a node that isn't a contact** (`CMD_SEND_ANON_REQ`). The companion app can query a node
+  addressed only by its public key — without adding it as a contact first — and the reply is forwarded back to
+  the app. The temporary node is never saved to the contact list. Gated by `permissions.settings == "full"`.
+  With this, MCLite now advertises companion firmware-version **13** so apps surface both this and the
+  un-scoped-scope option above.
 
 ### Changed
 - **Updated the MeshCore library 1.15 → 1.16.** Brings RadioLib 7.6, an SF-dependent preamble (32 symbols for
