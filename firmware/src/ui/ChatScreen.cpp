@@ -608,6 +608,7 @@ void ChatScreen::hide() {
             if (_cannedBtn) lv_group_remove_obj(_cannedBtn);
         }
     }
+    lv_obj_clean(_chatArea);
     lv_obj_add_flag(_screen, LV_OBJ_FLAG_HIDDEN);
 }
 
