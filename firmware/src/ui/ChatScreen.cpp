@@ -535,7 +535,8 @@ void ChatScreen::addBubble(const Message& msg) {
         lv_obj_t* hop = lv_label_create(meta);
         lv_obj_set_style_text_font(hop, FONT_BODY, 0);
         lv_obj_set_style_text_color(hop, theme::TEXT_TIMESTAMP(), 0);
-        lv_label_set_text_fmt(hop, "x%u", (unsigned)msg.hops);
+        if (msg.hops == 0) lv_label_set_text(hop, t("lbl_hop_direct"));   // heard directly, no relays
+        else               lv_label_set_text_fmt(hop, "x%u", (unsigned)msg.hops);
     }
 
     // Delivery status (outgoing only)
