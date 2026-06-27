@@ -5,6 +5,17 @@ All notable changes to MCLite are documented here. The format is loosely based o
 
 Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-watch-vX.Y.Z.bin`).
 
+## [Unreleased]
+
+### Added
+- **"Heard by N repeaters" on sent channel messages.** A channel message you send now shows `✓ ↻ N` once nearby
+  repeaters rebroadcast it — the `✓` means sent, and `↻ N` is how many distinct repeaters were heard echoing it
+  back (the count climbs as echoes arrive). It's deliberately different from a direct message's `✓✓` (which is a
+  real delivery ACK) — a channel echo only confirms a repeater relayed it. Always on; only meaningful where
+  repeaters are in range. Thanks @jason-s13r (#39).
+- **Show received hop count.** Optionally show how many hops a received message took (`xN` next to the time;
+  `x0` = heard directly). Off by default — enable in **Settings → Messaging → Show Hop Count**. (#39)
+
 ## [0.4.1] — 2026-06-25
 
 ### Added
