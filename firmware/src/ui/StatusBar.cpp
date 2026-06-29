@@ -327,6 +327,7 @@ void StatusBar::update() {
                 const size_t dram_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
                 const size_t dram_tot  = heap_caps_get_total_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
                 const size_t dram_min  = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                const size_t dram_big  = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
                 const size_t ps_free   = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
                 const size_t ps_tot    = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
                 const uint8_t ramPct   = dram_tot > 0 ? (uint8_t)(100 - (dram_free * 100 / dram_tot)) : 0;
@@ -337,11 +338,18 @@ void StatusBar::update() {
                 else
                     snprintf(memBuf, sizeof(memBuf), "R%u%%", (unsigned)ramPct);
                 lv_label_set_text(_lblMem, memBuf);
-                
-                LOGF("[Mem] DRAM %u/%u KB (min %u KB), PSRAM %u/%u KB\n",
-                     (unsigned)(dram_free / 1024), (unsigned)(dram_tot / 1024),
-                     (unsigned)(dram_min / 1024),
-                     (unsigned)(ps_free / 1024), (unsigned)(ps_tot / 1024));
+
+                // Throttle the serial dump to ~10 s so it doesn't flood at the status-bar
+                // refresh rate. max-block is the metric that matters: LVGL allocations fail
+                // on internal-DRAM fragmentation long before total-free reaches zero.
+                static uint32_t lastMemLog = 0;
+                if (millis() - lastMemLog >= 10000) {
+                    lastMemLog = millis();
+                    LOGF("[Mem] DRAM %u/%u KB (min %u, max-block %u), PSRAM %u/%u KB\n",
+                         (unsigned)(dram_free / 1024), (unsigned)(dram_tot / 1024),
+                         (unsigned)(dram_min / 1024), (unsigned)(dram_big / 1024),
+                         (unsigned)(ps_free / 1024), (unsigned)(ps_tot / 1024));
+                }
             } else {
                 lv_label_set_text(_lblMem, "");
             }
