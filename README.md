@@ -125,53 +125,6 @@ esptool.py write_flash 0x0 mclite-watch-v0.4.0.bin    # T-Watch Ultra
 
 The T-Watch Ultra has no power switch -- if esptool can't connect, put it in download mode manually: hold **BOOT**, tap **RST**, release **BOOT**.
 
-### Updating the firmware (on-device, no USB)
-
-Once MCLite is installed you can update it without a computer:
-
-- **From SD card** -- copy a newer merged binary (`mclite-v*.bin` for the T-Deck Plus, `mclite-watch-v*.bin` for the T-Watch Ultra) to the SD card. On the next boot the device detects it and offers **Install / Cancel**, then flashes and reboots. The file is renamed afterwards so it won't re-prompt.
-- **Over WiFi** -- on the device go to **Admin → WiFi**, switch WiFi on, pick your network and enter the password (saved for next time), then tap **Check for updates**. If a newer release exists on GitHub it downloads and installs. Enable **auto-update** (config tool → WiFi, or it checks on boot when on) to be prompted automatically.
-
-### Companion mode
-
-Use a phone, desktop, or CLI as a companion to the radio while the device keeps working normally — received and app-sent messages appear in **both** places at once. (One exception: messages you type *on the device* don't sync to the app — see the **Important limitation** note under Notes below.) MCLite speaks the standard MeshCore companion protocol over three transports (**one active at a time**): **Bluetooth**, **WiFi**, and **USB**. A companion can send/receive messages and **manage conversations** — add, rename, and remove contacts; add and remove channels; log into rooms — gated by `permissions.conversation_management`. With `permissions.settings` set to `full` it can also change **device settings** — device name, radio parameters (frequency/SF/BW/CR), TX power, BLE pairing PIN, path-hash mode, and region/scope (the last two handy for matching a large 3-byte mesh). The **identity/keys**, advert **location** (MCLite advertises GPS at the configured precision), and **auto-add** stay device-managed by design and are refused.
-
-#### Bluetooth (official mobile apps)
-
-The way to use the official MeshCore **iOS / Android** apps.
-
-1. On the device: **Admin → Bluetooth**. The screen shows a 6-digit **pairing PIN** (generated once and saved).
-2. Turn the **Bluetooth Companion** switch on — the device advertises as `MeshCore-<name>`.
-3. In the app: scan, pick this device, and enter the PIN when prompted. It bonds once and reconnects automatically.
-
-The Bluetooth status-bar icon turns **green** while a client is connected.
-
-#### WiFi (desktop / CLI on your LAN)
-
-1. On the device: **Admin → WiFi**, switch WiFi **on** and connect to your network.
-2. Turn on the **WiFi Companion** switch (enabled once WiFi is connected). The row shows `Companion <ip>:5000`.
-3. From a computer on the same network:
-   ```
-   pip install meshcore-cli
-   meshcore-cli -t <device-ip> -p 5000 infos      # or: contacts, recv, chan_msg, etc.
-   ```
-   (`meshcore.js` and `meshcore_py` work too.) The status-bar WiFi icon turns **green** while a client is attached. Note: the WiFi transport has **no pairing/auth** (the protocol's only auth is the Bluetooth passkey) — only enable it on networks you trust.
-
-#### USB (wired, computer)
-
-Turn on the **USB Companion** switch (**Admin → USB**; works with WiFi off), then connect over the USB-CDC port:
-```
-meshcore-cli -s /dev/ttyACM0 infos
-```
-While USB companion is active the device's **serial debug logging is muted** — the binary protocol and log text can't share the one USB port (there's no spare log UART on these boards). Logs resume the moment you turn it off. The charge bolt turns **green** while a USB client is bridging.
-
-#### Notes
-
-- **One transport, one client at a time** — the modes are mutually exclusive by design (the protocol is single-session). Turning one on turns the others off.
-- **WiFi vs Bluetooth can't run together** — they share the 2.4 GHz radio and there isn't enough RAM for both. Enabling Bluetooth turns WiFi off; once Bluetooth has been used, **switching back to WiFi needs a reboot** (the BLE stack can't be freed at runtime). The WiFi screen shows a notice and a **Reboot** button when this applies.
-- **Conversation management** — one consistent rule for both contacts and channels: **adding and editing apply instantly** (the companion session stays connected, and the change shows on the device's own conversation list and Admin screens right away), while **removing reboots the device** to apply (the app reconnects on its own). The reboot on removal is required for channels — MeshCore offers no way to drop a channel from the running radio, so MCLite rebuilds its channel table from config at boot — and is kept for contact removal too so the behaviour is uniform. Editing a contact from the app changes its **display name** only; per-contact permissions stay in the config file / on-device Admin.
-- ⚠️ **Important limitation — messages you type _on the device_ do not appear in the companion app.** Sending from the device **still works**: the message goes out over the mesh and others receive it normally — it just won't show up in the app. This is a hard constraint of the MeshCore companion protocol, not an MCLite bug: its sync stream carries only **received** messages, and there is **no frame for an outgoing/firmware-composed message** (stock MeshCore assumes the app is the sole composer — verified against the 1.16 reference firmware, whose sync queue is fed exclusively by receive callbacks). A direct message you typed on the device therefore can't be shown as "sent" in the app at all, so it is left out rather than mislabelled as incoming. **If you want a complete, correctly-sided history in the app, compose your messages from the app.** Everything else mirrors both ways: messages you **receive**, and messages you **send from the app**, appear on the device *and* in the app.
-
 ### Set up your config
 
 **Option 1: Config Tool (recommended)**
@@ -366,6 +319,53 @@ This is the same layout used by MeshCore's official T-Deck firmware, so any exis
 **Getting tiles**: [map-tiles-downloader](https://github.com/tekk/map-tiles-downloader) is a terminal tool (TUI) that produces exactly this layout -- pick a country/region, zoom range, tile source, and export.
 
 Region codes in that tool are GeoNames admin1 codes, not the local administrative numbers you may be familiar with. For Germany, a few common ones: `02` = Bayern, `04` = Hamburg, `07` = Nordrhein-Westfalen, `16` = Berlin. Check the [GeoNames admin1 codes list](https://download.geonames.org/export/dump/admin1CodesASCII.txt) for other countries.
+
+### Updating the firmware (on-device, no USB)
+
+Once MCLite is installed you can update it without a computer:
+
+- **From SD card** -- copy a newer merged binary (`mclite-v*.bin` for the T-Deck Plus, `mclite-watch-v*.bin` for the T-Watch Ultra) to the SD card. On the next boot the device detects it and offers **Install / Cancel**, then flashes and reboots. The file is renamed afterwards so it won't re-prompt.
+- **Over WiFi** -- on the device go to **Admin → WiFi**, switch WiFi on, pick your network and enter the password (saved for next time), then tap **Check for updates**. If a newer release exists on GitHub it downloads and installs. Enable **auto-update** (config tool → WiFi, or it checks on boot when on) to be prompted automatically.
+
+### Companion mode
+
+Use a phone, desktop, or CLI as a companion to the radio while the device keeps working normally — received and app-sent messages appear in **both** places at once. (One exception: messages you type *on the device* don't sync to the app — see the **Important limitation** note under Notes below.) MCLite speaks the standard MeshCore companion protocol over three transports (**one active at a time**): **Bluetooth**, **WiFi**, and **USB**. A companion can send/receive messages and **manage conversations** — add, rename, and remove contacts; add and remove channels; log into rooms — gated by `permissions.conversation_management`. With `permissions.settings` set to `full` it can also change **device settings** — device name, radio parameters (frequency/SF/BW/CR), TX power, BLE pairing PIN, path-hash mode, and region/scope (the last two handy for matching a large 3-byte mesh). The **identity/keys**, advert **location** (MCLite advertises GPS at the configured precision), and **auto-add** stay device-managed by design and are refused.
+
+#### Bluetooth (official mobile apps)
+
+The way to use the official MeshCore **iOS / Android** apps.
+
+1. On the device: **Admin → Bluetooth**. The screen shows a 6-digit **pairing PIN** (generated once and saved).
+2. Turn the **Bluetooth Companion** switch on — the device advertises as `MeshCore-<name>`.
+3. In the app: scan, pick this device, and enter the PIN when prompted. It bonds once and reconnects automatically.
+
+The Bluetooth status-bar icon turns **green** while a client is connected.
+
+#### WiFi (desktop / CLI on your LAN)
+
+1. On the device: **Admin → WiFi**, switch WiFi **on** and connect to your network.
+2. Turn on the **WiFi Companion** switch (enabled once WiFi is connected). The row shows `Companion <ip>:5000`.
+3. From a computer on the same network:
+   ```
+   pip install meshcore-cli
+   meshcore-cli -t <device-ip> -p 5000 infos      # or: contacts, recv, chan_msg, etc.
+   ```
+   (`meshcore.js` and `meshcore_py` work too.) The status-bar WiFi icon turns **green** while a client is attached. Note: the WiFi transport has **no pairing/auth** (the protocol's only auth is the Bluetooth passkey) — only enable it on networks you trust.
+
+#### USB (wired, computer)
+
+Turn on the **USB Companion** switch (**Admin → USB**; works with WiFi off), then connect over the USB-CDC port:
+```
+meshcore-cli -s /dev/ttyACM0 infos
+```
+While USB companion is active the device's **serial debug logging is muted** — the binary protocol and log text can't share the one USB port (there's no spare log UART on these boards). Logs resume the moment you turn it off. The charge bolt turns **green** while a USB client is bridging.
+
+#### Notes
+
+- **One transport, one client at a time** — the modes are mutually exclusive by design (the protocol is single-session). Turning one on turns the others off.
+- **WiFi vs Bluetooth can't run together** — they share the 2.4 GHz radio and there isn't enough RAM for both. Enabling Bluetooth turns WiFi off; once Bluetooth has been used, **switching back to WiFi needs a reboot** (the BLE stack can't be freed at runtime). The WiFi screen shows a notice and a **Reboot** button when this applies.
+- **Conversation management** — one consistent rule for both contacts and channels: **adding and editing apply instantly** (the companion session stays connected, and the change shows on the device's own conversation list and Admin screens right away), while **removing reboots the device** to apply (the app reconnects on its own). The reboot on removal is required for channels — MeshCore offers no way to drop a channel from the running radio, so MCLite rebuilds its channel table from config at boot — and is kept for contact removal too so the behaviour is uniform. Editing a contact from the app changes its **display name** only; per-contact permissions stay in the config file / on-device Admin.
+- ⚠️ **Important limitation — messages you type _on the device_ do not appear in the companion app.** Sending from the device **still works**: the message goes out over the mesh and others receive it normally — it just won't show up in the app. This is a hard constraint of the MeshCore companion protocol, not an MCLite bug: its sync stream carries only **received** messages, and there is **no frame for an outgoing/firmware-composed message** (stock MeshCore assumes the app is the sole composer — verified against the 1.16 reference firmware, whose sync queue is fed exclusively by receive callbacks). A direct message you typed on the device therefore can't be shown as "sent" in the app at all, so it is left out rather than mislabelled as incoming. **If you want a complete, correctly-sided history in the app, compose your messages from the app.** Everything else mirrors both ways: messages you **receive**, and messages you **send from the app**, appear on the device *and* in the app.
 
 ## Hints
 
