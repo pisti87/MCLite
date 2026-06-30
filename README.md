@@ -54,36 +54,54 @@ That's it. Full walkthrough — including updates and companion mode — in [Get
 
 ## Features
 
+> [!TIP]
+> Out of the box it's just a messenger — pick a contact or channel and type. Everything below is **optional**; turn on only what you need.
+
 *Release history and per-version changes: see [CHANGELOG.md](CHANGELOG.md).*
 
-- **Direct messages** -- private encrypted conversations between contacts
-- **Channels** -- group communication via shared or public channels, with optional read-only (listen-only) mode
-- **Room servers** -- join community message boards run by MeshCore room servers (up to 8). Posts arrive on the conversation list with an `R` icon, ordered alongside DMs and channels by last activity. Auto-login on boot with retry; re-login on chat-open and after 10 minutes of silence to recover from brief radio dropouts.
-- **Heard adverts** -- browse a rolling 64-entry list of every device your radio has decoded, reachable from the admin screen. Per-row type icon (chat / repeater / room / sensor), hops, last-heard age, GPS when present. Tap a chat advert for the full per-hop path + fingerprint and a one-tap **Save** that adds it to your contact list (queued, applies on next reboot). Manual-advert button announces yourself on demand without waiting for the next periodic cycle
-- **Share a contact** -- the **Share** button in a DM chat header re-broadcasts that contact's signed advert at zero hop, so a nearby device picks them up in its own Heard Adverts and adds them with no key typing (MeshCore's standard contact-sharing). Saved contacts' adverts are kept on the SD card so sharing works after a reboot. Toggle with `messaging.share_contact`
-- **SOS alerts** -- long-press the trackball (hold 6 seconds) to broadcast an emergency alert
-- **Battery alerts** -- automatic low-battery warnings sent to your contacts
-- **GPS location sharing** -- manually send your position in lat/lon or UTMREF/MGRS (military grid) format, used by search and rescue worldwide. Last-known position support when GPS signal is temporarily lost. Optionally **broadcast your location in adverts** (`location_precision`, off by default) so contacts see you on their map -- with a **privacy precision** setting (exact, or coarsened to a ~100 m / ~750 m / ~3 km / ~12 km / ~50 km grid). Note adverts are unencrypted and reach everyone in range; targeted per-contact telemetry replies and the in-chat GPS insert always use your exact position
-- **Telemetry** -- responds to MeshCore-standard telemetry requests (battery, GPS) with per-contact permissions. Compatible with MeshCore companion apps. Optionally request telemetry from contacts to see their battery, location, and distance
-- **Map view** -- visualise positions on a slippy map (optional, requires tile pack on SD card). Tap the **map button** in a chat header for that contact's position (shown once the contact is located), or tap the **status-bar GPS icon** for the general map: your own location plus markers for every heard node / contact that carries GPS (same chat / repeater / room / sensor symbols as the heard-adverts list). Tap a marker for its name, drag to pan, zoomable, with Center and Reload buttons
-- **Message history** -- conversations saved to SD card and restored on reboot
-- **Quick replies** -- optional canned message picker for fast responses (OK, Copy, Need help, etc.), translatable and customizable; per-conversation override lists turn a contact/channel/room into a command menu (e.g. a Home Assistant bridge)
-- **Themes** -- selectable UI color palettes: **Dark** (default), **Light**, **Amber** (a "military" night mode that preserves night vision), and **High contrast**. Switch on-device (Admin -> Theme, reboots to apply) or set `display.theme` in config. You can also define your own palettes under `display.themes` -- start from a built-in `base` and override any color with a `#RRGGBB` value
-- **Emoji** -- received emoji render inline in chat (monochrome OpenMoji glyphs with a plain-text fallback, so anything outside the included set degrades gracefully rather than showing boxes). An on-device emoji picker (`display.emoji`, on by default, can be disabled) adds a smiley button to compose from a curated set, without letting a message exceed the 160-byte radio limit
-- **Multi-language** -- English, German, French, and Italian included. Add your own translations via SD card
-- **Notification sounds** -- chime on incoming messages, alarm on SOS. Supports custom WAV files from SD card
-- **Haptic feedback** (T-Watch Ultra) -- vibration on incoming messages and SOS alerts, independent of the sound mute
-- **Real-time clock** (T-Watch Ultra) -- battery-backed RTC keeps accurate time across reboots and before the first GPS fix
-- **Auto-dim** -- screen and keyboard backlight dim after inactivity to save battery
+**Everyday messaging**
+- **Direct messages** -- private, end-to-end encrypted 1:1 chats
+- **Channels** -- group chats via shared, public, or hashtag channels (optional listen-only mode)
+- **Room servers** -- join community message boards (up to 8), with auto-login and reconnect
+- **Quick replies** -- optional canned-message picker; per-chat lists can double as a command menu (e.g. a Home Assistant bridge)
+- **Emoji** -- inline emoji rendering plus an on-device picker, with graceful plain-text fallback
+- **Message history** -- conversations saved to SD and restored on reboot
+
+**Location & awareness**
+- **GPS location sharing** -- send your position (lat/lon or UTMREF/MGRS); optional advert broadcast with privacy-grid precision (off by default)
+- **Offline map view** -- see contacts, heard nodes, and yourself on a slippy map (needs a tile pack on SD)
+- **Telemetry** -- answer or request battery / GPS / distance, with per-contact permissions
+- **Heard adverts** -- rolling list of every device your radio decodes, with one-tap **Save** to contacts
+- **Share a contact** -- re-broadcast a contact's advert so a nearby device adds them with no key typing
+
+**Safety & alerts**
+- **SOS broadcast** -- long-press to send an emergency alert to your group
+- **Battery alerts** -- automatic low-battery warning sent to your contacts
+- **Notification sounds** -- incoming chime and SOS alarm, with custom-WAV support
+- **Haptic feedback** *(T-Watch Ultra)* -- vibrate on messages and SOS, independent of mute
+
+<details>
+<summary><strong>Power &amp; advanced features</strong> &mdash; click to expand</summary>
+
+**Device & comfort**
+- **Themes** -- Dark, Light, Amber (night-vision), High-contrast, or your own custom palette
+- **Multi-language** -- English, German, French, Italian, plus your own translations via SD
+- **Auto-dim** -- screen and keyboard backlight dim on inactivity to save battery
+- **Screen & PIN lock** -- key lock or PIN code, with optional auto-lock on dim
+- **Real-time clock** *(T-Watch Ultra)* -- battery-backed RTC keeps time across reboots
 - **Multiple input methods** -- QWERTY keyboard, trackball, and touchscreen
-- **Screen lock** -- hold the trackball for 1 second to lock. Key lock blocks all input and unlocks with another 1s hold. PIN lock requires a code to unlock. Optional auto-lock on display dim
-- **Region scope** -- tag outgoing packets with MeshCore transport codes so repeaters can filter by region. Set a global scope or override per channel/room
-- **Path hash mode** -- configurable repeater path fingerprint size (1/2/3 bytes per hop). Larger sizes reduce path collisions in dense meshes at the cost of a few extra bytes per hop. Defaults to 1 byte for compatibility with pre-v1.15 peers
-- **Offgrid mode** -- one-flag toggle that switches to the community offgrid frequency (433/869/918 MHz, auto-picked from your normal frequency) and relays packets for other offgrid nodes. Camping / hiking / SAR scenarios where no repeaters exist. Toggle on-device from the admin screen or via config tool, reboot to apply. While offgrid, only other offgrid peers receive your messages, SOS, and battery alerts.
-- **Update from SD card** -- drop a firmware `.bin` on the SD card and the device offers to install it on boot (or from the admin screen) -- no USB needed
-- **Update over WiFi** -- optionally connect to WiFi on-device (scan + enter password) and check GitHub for newer firmware; download and install with one tap. Off by default
-- **Companion mode (WiFi / USB / BLE)** -- bridge the radio to a phone/desktop/CLI using the standard MeshCore companion protocol, *in parallel* with normal on-device use (received and app-sent messages appear in both — but messages typed *on the device* don't sync to the app; see the limitation note under Companion mode). BLE pairs with the **official MeshCore mobile apps** (6-digit PIN); WiFi/USB work with `meshcore-cli`/`meshcore.js`/`meshcore_py`. One transport at a time; messaging is read-only for config (no remote edits). See note below
-- **Zero-config for end users** -- all settings live in one JSON file on the SD card. Set it up once, copy to every device in your group
+
+**Network & range**
+- **Region scope** -- tag packets so repeaters can filter by region (global or per channel/room)
+- **Path-hash mode** -- tune the repeater path-fingerprint size (1/2/3 bytes per hop) for dense meshes
+- **Offgrid mode** -- one-flag switch to the community offgrid frequency, relaying for nearby offgrid nodes
+
+**Connect & maintain**
+- **Companion mode** -- bridge the radio to a phone / desktop / CLI over Bluetooth, WiFi, or USB; BLE pairs with the official MeshCore mobile apps
+- **Update from SD card** -- drop a `.bin` on the card and install on boot -- no USB needed
+- **Update over WiFi** -- check GitHub and install the latest release on-device (off by default)
+- **Zero-config deployment** -- all settings in one JSON file; set up once, copy to the whole group
+</details>
 
 > [!NOTE]
 > **Heard nodes go to "Heard Adverts", not your contact list — by design.** Unlike the stock MeshCore apps, MCLite never auto-adds a node you overhear to your contacts. Your contacts are the people you deliberately define (config tool) or **Save** from Heard Adverts; discovered nodes live in **Admin → Heard Adverts**. So a sparse or empty *contact* list is not a sign of weak reception — it's the intended behaviour. Adverts are also bursty: a freshly-booted device can take ~10–15 minutes to populate the heard list even with perfect reception.
