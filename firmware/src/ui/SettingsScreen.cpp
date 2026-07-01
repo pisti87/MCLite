@@ -2436,6 +2436,7 @@ void SettingsScreen::scopeReadyCb(lv_event_t* e) {
     SettingsScreen* self = (SettingsScreen*)lv_event_get_user_data(e);
     if (!self || !self->_scopeTextarea) return;
     String s = convoTrim(String(lv_textarea_get_text(self->_scopeTextarea)));
+    sanitizeScope(s);   // a scope is one region name — drop anything past a space (#36)
     auto& cfg = ConfigManager::instance().config();
     int idx = self->_scopeTargetIdx;
     String* target = nullptr;

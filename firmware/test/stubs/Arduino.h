@@ -112,6 +112,13 @@ public:
     void toUpperCase() {
         for (auto& c : _str) c = (char)std::toupper((unsigned char)c);
     }
+    // Arduino String::trim() removes leading/trailing whitespace in place.
+    void trim() {
+        size_t b = _str.find_first_not_of(" \t\r\n");
+        if (b == std::string::npos) { _str.clear(); return; }
+        size_t e = _str.find_last_not_of(" \t\r\n");
+        _str = _str.substr(b, e - b + 1);
+    }
 
 private:
     std::string _str;

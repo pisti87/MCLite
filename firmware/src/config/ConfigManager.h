@@ -1,11 +1,27 @@
 #pragma once
 
 #include <ArduinoJson.h>
+#include <Arduino.h>
 #include <vector>
 #include <utility>
 #include <cstdint>
 
 namespace mclite {
+
+// A scope/region field holds a SINGLE region name ("eug"), "*", or "" — never a
+// space-separated list. A pasted multi-region `region def` string (e.g.
+// "west pnw or wv eug") would be hashed as one name, producing a transport key
+// that matches no repeater, so every scoped flood is silently dropped (#36).
+// Keep only the first whitespace-delimited token. Returns true if it changed the
+// input, so callers can log the correction. Applied to every scope input path
+// (config.json load, companion set-scope, on-device editor).
+inline bool sanitizeScope(String& s) {
+    String before = s;
+    s.trim();
+    int sp = s.indexOf(" ");
+    if (sp >= 0) s = s.substring(0, sp);
+    return s != before;
+}
 
 struct ContactConfig {
     String alias;            // Display name (user-chosen)

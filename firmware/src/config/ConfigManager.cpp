@@ -122,6 +122,8 @@ bool ConfigManager::parseJson(const String& json) {
         if (_config.radio.codingRate < 5 || _config.radio.codingRate > 8)
             _config.radio.codingRate = defaults::RADIO_CODING_RATE;
         _config.radio.scope           = radio["scope"] | defaults::RADIO_SCOPE;
+        if (sanitizeScope(_config.radio.scope))
+            LOGF("[Config] radio.scope had spaces; kept first token '%s'\n", _config.radio.scope.c_str());
         _config.radio.pathHashMode    = radio["path_hash_mode"] | defaults::RADIO_PATH_HASH_MODE;
         if (_config.radio.pathHashMode > 2)
             _config.radio.pathHashMode = defaults::RADIO_PATH_HASH_MODE;
@@ -175,6 +177,8 @@ bool ConfigManager::parseJson(const String& json) {
             rc.sendSos   = r["send_sos"]   | false;
             rc.readOnly  = r["read_only"]  | false;
             rc.scope     = r["scope"]      | "";
+            if (sanitizeScope(rc.scope))
+                LOGF("[Config] room scope had spaces; kept first token '%s'\n", rc.scope.c_str());
             parseCannedArray(r, rc.canned);
             // Normalize pubkey to lowercase. UIManager compares
             // publicKey.substring(0, 16) against ConvoId::id (always lowercase
@@ -213,6 +217,8 @@ bool ConfigManager::parseJson(const String& json) {
             cc.sendSos  = ch["send_sos"] | defaultSendSos;
             cc.readOnly = ch["read_only"] | false;
             cc.scope    = ch["scope"] | "";
+            if (sanitizeScope(cc.scope))
+                LOGF("[Config] channel scope had spaces; kept first token '%s'\n", cc.scope.c_str());
             parseCannedArray(ch, cc.canned);
             // Private channels require a PSK; hashtag channels can derive from name
             if (cc.psk.length() > 0 || cc.type == "hashtag") {

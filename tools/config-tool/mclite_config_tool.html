@@ -4054,6 +4054,26 @@ function validate() {
     }
   });
 
+  // Scope fields hold a SINGLE region name. An interior space is almost always a
+  // pasted multi-region `region def` list — it would be hashed as one name,
+  // producing a transport key that matches no repeater, so scoped floods are
+  // silently dropped (#36). Reject any scope containing a space.
+  const scopeHasSpace = v => (v || '').trim().indexOf(' ') >= 0;
+  const radioScopeEl = document.getElementById('radioScope');
+  const radioScopeField = radioScopeEl.closest('.field');
+  if (scopeHasSpace(radioScopeEl.value)) {
+    if (radioScopeField) radioScopeField.classList.add('invalid');
+    issues.push('Radio scope must be a single region name — no spaces (e.g. "eug", not "west pnw or wv eug")');
+  } else if (radioScopeField) {
+    radioScopeField.classList.remove('invalid');
+  }
+  channels.forEach((ch, i) => {
+    if (scopeHasSpace(ch.scope)) issues.push('Channel ' + (i + 1) + ' scope must be a single region name — no spaces');
+  });
+  rooms.forEach((r, i) => {
+    if (scopeHasSpace(r.scope)) issues.push('Room ' + (i + 1) + ' scope must be a single region name — no spaces');
+  });
+
   if (issues.length > 0) {
     toast(issues.length === 1
       ? issues[0]

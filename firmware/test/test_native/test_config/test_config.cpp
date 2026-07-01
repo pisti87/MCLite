@@ -1119,6 +1119,30 @@ void test_remove_contact_and_room() {
     TEST_ASSERT_EQUAL_INT(0, (int)cfg->config().roomServers.size());
 }
 
+// ── Scope space sanitization (#36): a scope is one region name, never a list ──
+void test_sanitize_scope_cuts_at_first_space() {
+    String s = "west pnw or wv eug";
+    TEST_ASSERT_TRUE(sanitizeScope(s));            // reports it changed
+    TEST_ASSERT_EQUAL_STRING("west", s.c_str());   // kept only the first token
+}
+void test_sanitize_scope_single_token_unchanged() {
+    String s = "eug";
+    TEST_ASSERT_FALSE(sanitizeScope(s));
+    TEST_ASSERT_EQUAL_STRING("eug", s.c_str());
+}
+void test_sanitize_scope_trims_but_keeps_wildcard() {
+    String s = "  eug  ";
+    sanitizeScope(s);
+    TEST_ASSERT_EQUAL_STRING("eug", s.c_str());
+    String w = "*";
+    TEST_ASSERT_FALSE(sanitizeScope(w));
+    TEST_ASSERT_EQUAL_STRING("*", w.c_str());
+}
+void test_config_load_cuts_scope_at_space() {
+    parse("{\"radio\":{\"scope\":\"west pnw or wv eug\"}}");
+    TEST_ASSERT_EQUAL_STRING("west", cfg->config().radio.scope.c_str());
+}
+
 int main() {
     UNITY_BEGIN();
 
@@ -1289,6 +1313,12 @@ int main() {
     RUN_TEST(test_append_room_dup_pubkey_refused);
     RUN_TEST(test_append_room_refuses_at_cap);
     RUN_TEST(test_remove_contact_and_room);
+
+    // Scope space sanitization (#36)
+    RUN_TEST(test_sanitize_scope_cuts_at_first_space);
+    RUN_TEST(test_sanitize_scope_single_token_unchanged);
+    RUN_TEST(test_sanitize_scope_trims_but_keeps_wildcard);
+    RUN_TEST(test_config_load_cuts_scope_at_space);
 
     return UNITY_END();
 }

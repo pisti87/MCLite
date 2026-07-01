@@ -1074,6 +1074,7 @@ void CompanionService::cmdSetDefaultFloodScope(size_t len) {
             scope = name;                              // store verbatim (WYSIWYG, matches on-device)
         }
     }
+    sanitizeScope(scope);   // a scope is one region name — drop anything past a space (#36)
     if (cfg.radio.scope != scope) {
         cfg.radio.scope = scope;
         if (!ConfigManager::instance().save()) { cfg.radio.scope = prev; writeErr(ERR_CODE_FILE_IO_ERROR); return; }
