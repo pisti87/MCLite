@@ -21,7 +21,7 @@
                 {
                   "type": "flash-wipe",
                   "name": "mclite-v0.4.1.bin",
-                  "url": "https://github.com/laserir/MCLite/releases/download/v0.4.1/mclite-v0.4.1.bin",
+                  "url": "https://raw.githubusercontent.com/laserir/MCLite/HEAD/tools/web-flasher/firmware/mclite-v0.4.1.bin",
                   "title": "Full install (bootloader + firmware)"
                 }
               ]
@@ -45,7 +45,7 @@
                 {
                   "type": "flash-wipe",
                   "name": "mclite-watch-v0.4.1.bin",
-                  "url": "https://github.com/laserir/MCLite/releases/download/v0.4.1/mclite-watch-v0.4.1.bin",
+                  "url": "https://raw.githubusercontent.com/laserir/MCLite/HEAD/tools/web-flasher/firmware/mclite-watch-v0.4.1.bin",
                   "title": "Full install (bootloader + firmware)"
                 }
               ]

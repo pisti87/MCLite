@@ -2,10 +2,12 @@
 """Generate catalog.json for the Mesh America Device Configurator (issue #42).
 
 Emits a static "provider catalog" matching the MeshCore config.json schema
-(https://apps.meshamerica.com). It points at MCLite's GitHub Release assets,
-which are served over HTTPS with `Access-Control-Allow-Origin: *`, and the
-catalog itself is meant to be served from raw.githubusercontent.com (also CORS
-`*`). No server, no keys — Mesh America just reads this one file live.
+(https://apps.meshamerica.com). Both the catalog and the firmware bins it
+points at are served from raw.githubusercontent.com, which sends
+`Access-Control-Allow-Origin: *`. (GitHub Release download URLs do NOT — they
+302 to release-assets.githubusercontent.com and neither hop sets ACAO, so a
+browser validator fails CORS.) No server, no keys — Mesh America just reads
+this one file live.
 
 Device names follow the official MeshCore catalog (flasher.meshcore.io):
   - "LilyGo T-Deck"        exists officially  -> MCLite FOLDS into that tile as
@@ -41,7 +43,12 @@ def read_version_from_defaults():
 
 
 def asset_url(version, filename):
-    return f"https://github.com/{REPO}/releases/download/v{version}/{filename}"
+    # Serve the merged bins from raw.githubusercontent.com, NOT the GitHub
+    # Release download URL. Release assets 302 to release-assets.githubusercontent.com
+    # and NEITHER hop sends `Access-Control-Allow-Origin`, so a browser validator
+    # (e.g. Mesh America's) fails CORS. raw.github sends ACAO `*`, and the workflow
+    # already commits these exact bins under tools/web-flasher/firmware/.
+    return f"https://raw.githubusercontent.com/{REPO}/HEAD/tools/web-flasher/firmware/{filename}"
 
 
 def firmware_option(version, notes, merged_bin):
