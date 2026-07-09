@@ -150,6 +150,11 @@ void MeshManager::wireCallbacks() {
         if (_onAnonResponse) _onAnonResponse(tag, data, len);
     });
 
+    // Repeater scope/region list reply (issue #45)
+    _mesh->onScopeList([this](const std::vector<String>& scopes) {
+        if (_onScopeList) _onScopeList(scopes);
+    });
+
     // Status-request reply (companion forwards as PUSH_CODE_STATUS_RESPONSE)
     _mesh->onStatusResponse([this](const uint8_t* pubKey, const uint8_t* data, uint8_t len) {
         if (_onStatusResponse) _onStatusResponse(pubKey, data, len);
@@ -382,6 +387,15 @@ bool MeshManager::sendAnonReqByKey(const uint8_t* pubKey, const uint8_t* data, u
 
 bool MeshManager::isAnonReqPending() const {
     return _mesh && _mesh->anonReqPending();
+}
+
+void MeshManager::clearAnonReq() {
+    if (_mesh) _mesh->clearPendingAnonReq();
+}
+
+bool MeshManager::requestScopeList(const uint8_t* pubKey, uint32_t& tag, uint32_t& estTimeout) {
+    if (!_mesh || !_radioReady) return false;
+    return _mesh->requestScopeList(pubKey, tag, estTimeout);
 }
 
 bool MeshManager::sendStatusReqByKey(const uint8_t* pubKey, uint32_t& tag, uint32_t& estTimeout) {

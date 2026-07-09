@@ -12,12 +12,18 @@
 #include <helpers/radiolib/CustomSX1262.h>
 #include <RadioLib.h>
 #include <functional>
+#include <vector>
 #include "../storage/TelemetryCache.h"
+#include "ScopeListParser.h"
 
 namespace mclite {
 
 // MeshCore telemetry protocol constants
 static constexpr uint8_t REQ_TYPE_GET_TELEMETRY_DATA = 0x03;
+// Anonymous-request type for a repeater's scope/region list (issue #45). Sent as an
+// ANON_REQ; the repeater answers unauthenticated (rate-limited) but only when the
+// request arrives route-direct. See MeshCore simple_repeater handleAnonRegionsReq().
+static constexpr uint8_t ANON_REQ_TYPE_REGIONS = 0x01;
 static constexpr uint8_t TELEM_PERM_BASE        = 0x01;
 static constexpr uint8_t TELEM_PERM_LOCATION     = 0x02;
 static constexpr uint8_t TELEM_PERM_ENVIRONMENT  = 0x04;
@@ -41,6 +47,10 @@ using MeshTelemetryRetryCb = std::function<void(uint32_t newTimeoutMs)>;
 // Raw reply to an anonymous request (CMD_SEND_ANON_REQ). Carries the request tag
 // (so the app matches it to RESP_CODE_SENT) and the verbatim response payload.
 using MeshAnonRespCb = std::function<void(uint32_t tag, const uint8_t* data, uint8_t len)>;
+// Parsed reply to a repeater ANON_REQ_TYPE_REGIONS request (issue #45): the repeater's
+// ordered scope/region names. An empty vector means the repeater replied but advertises
+// no named regions (wildcard-only). See ScopeListParser.h for the wire format.
+using MeshScopeListCb = std::function<void(const std::vector<String>& scopes)>;
 // Reply to a status request (CMD_SEND_STATUS_REQ): sender pubkey + verbatim status blob.
 using MeshStatusRespCb = std::function<void(const uint8_t* pubKey, const uint8_t* data, uint8_t len)>;
 // Trace reply (CMD_SEND_TRACE_PATH → onTraceRecv): per-hop path hashes + SNRs and a final SNR.
@@ -145,6 +155,7 @@ public:
     void onTelemetryRaw(MeshTelemetryRawCb cb) { _onTelemetryRaw = cb; }
     void onTelemetryRetry(MeshTelemetryRetryCb cb) { _onTelemetryRetry = cb; }
     void onAnonResponse(MeshAnonRespCb cb) { _onAnonResponse = cb; }
+    void onScopeList(MeshScopeListCb cb) { _onScopeList = cb; }
     void onStatusResponse(MeshStatusRespCb cb) { _onStatusResponse = cb; }
     void onTrace(MeshTraceCb cb) { _onTrace = cb; }
     void onRoomMsg(MeshRoomMsgCb cb)     { _onRoomMsg = cb; }
@@ -173,6 +184,17 @@ public:
     bool sendAnonReqByKey(const uint8_t* pubKey, const uint8_t* data, uint8_t len,
                           uint32_t& tag, uint32_t& estTimeout);
     bool anonReqPending() const { return _pendingAnonTag != 0; }
+    // Abandon the pending anon request slot (e.g. the UI gave up before its mesh-level
+    // timeout, which can be long for far paths). Frees the radio for an immediate retry.
+    void clearPendingAnonReq() { _pendingAnonTag = 0; memset(_pendingAnonKey, 0, PUB_KEY_SIZE); _pendingAnonIsRegions = false; }
+
+    // Request a repeater's scope/region list (issue #45). Sends an ANON_REQ_TYPE_REGIONS
+    // anonymous request ZERO-HOP DIRECT — so it reaches repeaters in DIRECT radio range
+    // only. The parsed reply arrives via onScopeList; shares the single anon-request slot.
+    // Multi-hop is unsupported: overheard advert flood-paths aren't reliable direct routes,
+    // and anonymous path discovery needs repeater credentials (see docs/known-issues).
+    // Returns false on send failure.
+    bool requestScopeList(const uint8_t* pubKey, uint32_t& tag, uint32_t& estTimeout);
 
     // Send a status request (CMD_SEND_STATUS_REQ) to a known contact by pubkey. Fills
     // tag + estTimeout; reply arrives via onStatusResponse. Single-slot. Returns false
@@ -352,6 +374,7 @@ private:
     MeshTelemetryRawCb _onTelemetryRaw;
     MeshTelemetryRetryCb _onTelemetryRetry;
     MeshAnonRespCb  _onAnonResponse;
+    MeshScopeListCb _onScopeList;
     MeshStatusRespCb _onStatusResponse;
     MeshTraceCb     _onTrace;
     MeshRoomMsgCb   _onRoomMsg;
@@ -362,6 +385,7 @@ private:
     uint32_t        _pendingAnonTag = 0;
     uint8_t         _pendingAnonKey[PUB_KEY_SIZE] = {};
     uint32_t        _pendingAnonExpiry = 0;   // millis() deadline; clears the slot if no reply arrives
+    bool            _pendingAnonIsRegions = false;  // pending anon req is a scope-list query (#45): route reply to _onScopeList
     uint32_t        _pendingStatusTag = 0;
     uint8_t         _pendingStatusKey[PUB_KEY_SIZE] = {};
     uint32_t        _pendingStatusExpiry = 0; // millis() deadline; clears the slot if no reply arrives

@@ -115,6 +115,9 @@ public:
     void updateTelemetryModal(const uint8_t* pubKey);
     void onTelemetryRetry(uint32_t newTimeoutMs);
 
+    // Repeater scope-list reply (issue #45) → route to the settings scope picker.
+    void onScopeListReply(const std::vector<String>& scopes) { _settingsScreen.handleScopeListReply(scopes); }
+
     // Map screen (opened from telemetry modal)
     void showMapScreen(const uint8_t* pubKey, double lat, double lon, const String& contactName);
 

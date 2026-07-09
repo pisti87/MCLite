@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <lvgl.h>
+#include <vector>
 
 namespace mclite {
 
@@ -82,6 +83,38 @@ private:
     void hideScopeEditor();
     static void scopeRowCb(lv_event_t* e);   // global radio scope (Radio screen row)
     static void scopeReadyCb(lv_event_t* e);
+
+    // ─── "Get scope from repeater" picker (issue #45) ───
+    // Additive to manual entry: the scope textarea is always editable; this only offers
+    // a shortcut to fill it from a nearby repeater's advertised region list. The editor
+    // overlay stays open underneath; each stage is a single ModalDialog on top (the modal
+    // group system does not stack), and returnToScopeEditor() re-attaches the editor group.
+    // Zero-hop only: the picker lists direct-range (hops==0) repeaters, the only ones the
+    // query can reach (see docs/known-issues). So no path/hop fields are needed here.
+    struct ScopeRepeater { uint8_t pubKey[32]; String name; };
+    std::vector<ScopeRepeater> _scopeRepeaters;   // snapshot for the repeater roller
+    std::vector<String> _scopeNames;              // scope options for the scope roller
+    lv_obj_t* _scopeReqDialog = nullptr;          // "requesting…" dialog while awaiting a reply
+    uint32_t  _scopeReqExpiry = 0;                // millis() deadline (0 = no request pending)
+    // Roller picker (own overlay/panel/group). The scope editor stays OPEN underneath; this
+    // roller's dedicated group leaves the editor's _editorGroup intact for returnToScopeEditor().
+    lv_obj_t*  _scopeRollerOverlay = nullptr;
+    lv_obj_t*  _scopeRollerPanel   = nullptr;
+    lv_obj_t*  _scopeRoller        = nullptr;
+    lv_group_t* _scopeRollerGroup  = nullptr;
+    enum class ScopePick { Repeater, Scope };
+    ScopePick _scopePickPhase = ScopePick::Repeater;
+    void onScopeFromRepeater();                   // "From repeater" button → repeater roller
+    void openScopeRoller(const String& title, const std::vector<String>& options);
+    void hideScopeRoller();
+    static void scopeRollerOkCb(lv_event_t* e);
+    void beginScopeRequest(const uint8_t* pubKey, const String& name);  // send + "requesting…"
+    void returnToScopeEditor();                   // re-attach the editor input group after a picker/popup
+    void scopeInfo(const String& msg);            // one-button info modal → returnToScopeEditor
+public:
+    // Called by UIManager when a repeater scope-list reply arrives (issue #45).
+    void handleScopeListReply(const std::vector<String>& scopes);
+private:
 
     // Boot text editor overlay
     lv_obj_t* _bootTextOverlay  = nullptr;

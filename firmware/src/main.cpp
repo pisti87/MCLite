@@ -401,6 +401,11 @@ static void setupMeshCallbacks() {
         CompanionService::instance().onAnonResponse(tag, data, len);
     });
 
+    // Repeater scope-list reply (issue #45) → the on-device scope picker.
+    mesh.onScopeList([](const std::vector<String>& scopes) {
+        UIManager::instance().onScopeListReply(scopes);
+    });
+
     // Forward a status-request reply to the companion app (PUSH_CODE_STATUS_RESPONSE).
     mesh.onStatusResponse([](const uint8_t* pubKey, const uint8_t* data, uint8_t len) {
         CompanionService::instance().onStatusResponse(pubKey, data, len);

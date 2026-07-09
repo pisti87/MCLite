@@ -8,6 +8,14 @@ Targets: **T-Deck Plus** (`mclite-vX.Y.Z.bin`) and **T-Watch Ultra** (`mclite-wa
 ## [Unreleased]
 
 ### Added
+- **Pick a scope from a nearby repeater.** When setting a region scope — global (**Settings → Radio → Scope**) or
+  a per-channel/room override — a new **From repeater** button asks a heard repeater for the list of regions it
+  actually serves, so you don't have to know the exact names. Pick a repeater, then pick **one** region from the
+  reply; it fills the scope field for you to review and **Save**. The manual text entry is untouched — this just
+  adds a shortcut. The picker lists **direct-range (0-hop) repeaters** the device has heard (tap the flood-advert
+  button on the Heard Adverts screen to prompt discovery). Requires a repeater running firmware that answers the
+  region query. **Multi-hop repeaters are not supported** — the query needs a route-direct path, and an overheard
+  advert path isn't a reliable one; configure scopes from a repeater within direct range. (#45)
 - **"Heard by N repeaters" on sent channel messages.** A channel message you send now shows `✓ ↻ N` once nearby
   repeaters rebroadcast it — the `✓` means sent, and `↻ N` is how many distinct repeaters were heard echoing it
   back (the count climbs as echoes arrive). It's deliberately different from a direct message's `✓✓` (which is a

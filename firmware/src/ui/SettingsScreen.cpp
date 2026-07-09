@@ -1273,6 +1273,18 @@ void SettingsScreen::hide() {
 }
 
 void SettingsScreen::tick() {
+    // Scope-list request timeout (issue #45). Checked before the section/visibility
+    // guards below: the request runs over a modal that can be opened from the Radio,
+    // Channels or Rooms sections, so it must fire regardless of the current section.
+    if (_scopeReqDialog && _scopeReqExpiry && (int32_t)(millis() - _scopeReqExpiry) >= 0) {
+        lv_obj_t* d = _scopeReqDialog;
+        _scopeReqDialog = nullptr;
+        _scopeReqExpiry = 0;
+        MeshManager::instance().clearAnonReq();   // free the radio for an immediate retry
+        ModalDialog::close(d);
+        scopeInfo(t("scope_req_timeout"));
+    }
+
     if (!_screen || lv_obj_has_flag(_screen, LV_OBJ_FLAG_HIDDEN)) return;
     if (_section != SettingsSection::Radio) return;
 
@@ -2421,6 +2433,11 @@ void SettingsScreen::nameRowCb(lv_event_t* e) {
 
 void SettingsScreen::hideScopeEditor() {
     if (!_scopeTextarea) return;
+    // Drop any pending scope-list request state (#45) so a late reply is ignored once
+    // the editor (and its group) are gone. No dialog is up here — the picker modals hold
+    // input focus while open, so hide can only run with the plain editor showing.
+    _scopeReqDialog = nullptr;
+    _scopeReqExpiry = 0;
     UIManager::instance().restoreFromModalGroup();
     if (_editorGroup) { lv_group_del(_editorGroup); _editorGroup = nullptr; }
 #ifdef PLATFORM_TWATCH
@@ -2508,8 +2525,34 @@ void SettingsScreen::openScopeEditor() {
     lv_obj_align(btnRow, LV_ALIGN_TOP_MID, 0, theme::STATUS_BAR_HEIGHT + 44 + 52);
     lv_obj_clear_flag(btnRow, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t* save = lv_btn_create(btnRow);
-    lv_obj_set_width(save, LV_PCT(100));
+    // "From repeater" (issue #45): a shortcut that fills the textarea from a nearby
+    // repeater's advertised region list. Manual entry above stays fully usable. On its
+    // own full-width row so the three actions fit on the 240px-tall screen.
+    lv_obj_t* fromRep = lv_btn_create(btnRow);
+    lv_obj_set_width(fromRep, LV_PCT(100));
+    lv_obj_set_style_bg_color(fromRep, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_bg_color(fromRep, theme::ACCENT(), LV_STATE_FOCUSED);
+    lv_obj_add_event_cb(fromRep, [](lv_event_t* ev) {
+        auto* s = static_cast<SettingsScreen*>(lv_event_get_user_data(ev));
+        if (s) lv_async_call([](void* p) { ((SettingsScreen*)p)->onScopeFromRepeater(); }, s);
+    }, LV_EVENT_CLICKED, this);
+    lv_obj_t* frLbl = lv_label_create(fromRep);
+    lv_label_set_text(frLbl, t("scope_from_repeater"));
+    lv_obj_center(frLbl);
+
+    // Save + Cancel share one horizontal row.
+    lv_obj_t* actionRow = lv_obj_create(btnRow);
+    lv_obj_set_size(actionRow, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(actionRow, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(actionRow, 0, 0);
+    lv_obj_set_style_pad_all(actionRow, 0, 0);
+    lv_obj_set_flex_flow(actionRow, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(actionRow, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(actionRow, theme::PAD_SMALL, 0);
+    lv_obj_clear_flag(actionRow, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* save = lv_btn_create(actionRow);
+    lv_obj_set_flex_grow(save, 1);
     lv_obj_set_style_bg_color(save, theme::ACCENT(), 0);
     lv_obj_set_style_bg_color(save, theme::BG_SECONDARY(), LV_STATE_FOCUSED);
     lv_obj_add_event_cb(save, scopeReadyCb, LV_EVENT_CLICKED, this);
@@ -2517,8 +2560,8 @@ void SettingsScreen::openScopeEditor() {
     lv_label_set_text(saveLbl, t("btn_save"));
     lv_obj_center(saveLbl);
 
-    lv_obj_t* cancel = lv_btn_create(btnRow);
-    lv_obj_set_width(cancel, LV_PCT(100));
+    lv_obj_t* cancel = lv_btn_create(actionRow);
+    lv_obj_set_flex_grow(cancel, 1);
     lv_obj_set_style_bg_color(cancel, theme::BG_SECONDARY(), 0);
     lv_obj_set_style_bg_color(cancel, theme::ACCENT(), LV_STATE_FOCUSED);
     lv_obj_add_event_cb(cancel, [](lv_event_t* ev) {
@@ -2532,6 +2575,7 @@ void SettingsScreen::openScopeEditor() {
     lv_group_t* g = lv_group_create();
     _editorGroup = g;
     lv_group_add_obj(g, _scopeTextarea);
+    lv_group_add_obj(g, fromRep);
     lv_group_add_obj(g, save);
     lv_group_add_obj(g, cancel);
     lv_group_focus_obj(_scopeTextarea);
@@ -2556,6 +2600,224 @@ void SettingsScreen::openScopeEditor() {
         }
     }, LV_EVENT_ALL, this);
 #endif
+}
+
+// ───────────────── "Get scope from repeater" picker (issue #45) ─────────────────
+//
+// Additive to manual entry, and single-select: the repeater reports its region list and
+// the user picks exactly ONE, which fills the editor textarea (still reviewable before Save).
+// The scope editor overlay stays OPEN underneath — the roller's dim scrim shows the typed
+// text behind it. switchToModalGroup does not stack, but the roller uses its own dedicated
+// group, so the editor's _editorGroup survives; returnToScopeEditor() re-attaches input to
+// it when a picker/popup closes. Repeater and scope selection both use a scrollable roller
+// (not a button list, which overflowed the 240px screen). Applies identically to global,
+// per-channel and per-room scope, since all three share this editor via _scopeTarget.
+namespace { constexpr uint8_t SCOPE_ADV_TYPE_REPEATER = 2; }  // mirrors ADV_TYPE_REPEATER
+
+// Re-attach input to the still-open scope editor after a picker/popup closes.
+void SettingsScreen::returnToScopeEditor() {
+    if (_editorGroup) {
+        IInput::instance().attachToGroup(_editorGroup);
+        if (_scopeTextarea) lv_group_focus_obj(_scopeTextarea);
+    }
+}
+
+// One-button info popup (no repeaters / busy / failed / timeout / no named regions),
+// then back to the editor.
+void SettingsScreen::scopeInfo(const String& msg) {
+    ModalDialog::show(t("scope_from_repeater"), msg, { String(t("btn_ok")) },
+        [this](lv_obj_t* dlg, int) { ModalDialog::close(dlg); returnToScopeEditor(); });
+}
+
+// "From repeater" tapped — snapshot heard repeaters and open the roller over the editor.
+void SettingsScreen::onScopeFromRepeater() {
+    if (!_scopeTextarea) return;   // editor gone
+
+    _scopeRepeaters.clear();
+    const auto& cache = HeardAdvertCache::instance();
+    for (int i = 0; i < cache.count(); i++) {
+        const HeardAdvert& e = cache.entries()[i];
+        if (e.type != SCOPE_ADV_TYPE_REPEATER) continue;
+        if (e.hops != 0) continue;   // zero-hop only: the query can't reach multi-hop repeaters
+        ScopeRepeater r;
+        memcpy(r.pubKey, e.pubKey, 32);
+        r.name = e.name[0] ? String(e.name) : String(t("scope_unnamed_repeater"));
+        _scopeRepeaters.push_back(r);
+    }
+
+    if (_scopeRepeaters.empty()) { scopeInfo(t("scope_no_repeaters")); return; }
+
+    std::vector<String> opts;
+    for (const auto& r : _scopeRepeaters) opts.push_back(r.name);
+    _scopePickPhase = ScopePick::Repeater;
+    openScopeRoller(t("scope_pick_repeater"), opts);
+}
+
+// Send the scope-list request and show a cancellable "requesting…" popup.
+void SettingsScreen::beginScopeRequest(const uint8_t* pubKey, const String& name) {
+    if (MeshManager::instance().isAnonReqPending()) { scopeInfo(t("scope_req_busy")); return; }
+    uint32_t tag = 0, est = 0;
+    if (!MeshManager::instance().requestScopeList(pubKey, tag, est)) {
+        scopeInfo(t("scope_req_failed"));
+        return;
+    }
+    // tick() enforces the timeout. Cap the wait so a lost reply doesn't hang the popup.
+    uint32_t wait = est + 5000;                // reply grace
+    if (wait > 20000) wait = 20000;            // hard ceiling
+    _scopeReqExpiry = millis() + wait;
+    _scopeReqDialog = ModalDialog::show(t("scope_from_repeater"),
+        String(t("scope_requesting")) + "\n" + name, { String(t("btn_cancel")) },
+        [this](lv_obj_t* dlg, int) {
+            _scopeReqDialog = nullptr;   // stop waiting; a late reply is now ignored
+            _scopeReqExpiry = 0;
+            MeshManager::instance().clearAnonReq();   // free the radio for an immediate retry
+            ModalDialog::close(dlg);
+            returnToScopeEditor();
+        });
+}
+
+// Called by UIManager when the mesh reply arrives. Guarded so stale/late replies
+// (after cancel or timeout) are ignored.
+void SettingsScreen::handleScopeListReply(const std::vector<String>& scopes) {
+    if (!_scopeReqDialog) return;
+    lv_obj_t* d = _scopeReqDialog;
+    _scopeReqDialog = nullptr;
+    _scopeReqExpiry = 0;
+    ModalDialog::close(d);
+    if (scopes.empty()) { scopeInfo(t("scope_none_named")); return; }
+    _scopeNames = scopes;
+    _scopePickPhase = ScopePick::Scope;
+    openScopeRoller(t("scope_pick_scope"), scopes);
+}
+
+// Roller picker (repeater or scope, per _scopePickPhase). Mirrors the config choice
+// picker: dim overlay (click to cancel), a roller, and an OK/Cancel row.
+void SettingsScreen::openScopeRoller(const String& title, const std::vector<String>& options) {
+    if (_scopeRollerPanel || options.empty()) return;
+
+    _scopeRollerOverlay = lv_obj_create(lv_layer_top());
+    lv_obj_set_size(_scopeRollerOverlay, Display::width(), Display::height());
+    lv_obj_set_pos(_scopeRollerOverlay, 0, 0);
+    lv_obj_set_style_bg_color(_scopeRollerOverlay, theme::SCRIM(), 0);
+    lv_obj_set_style_bg_opa(_scopeRollerOverlay, LV_OPA_50, 0);
+    lv_obj_set_style_border_width(_scopeRollerOverlay, 0, 0);
+    lv_obj_clear_flag(_scopeRollerOverlay, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(_scopeRollerOverlay, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(_scopeRollerOverlay, [](lv_event_t* ev) {
+        auto* s = (SettingsScreen*)lv_event_get_user_data(ev);
+        lv_async_call([](void* p) { auto* self = (SettingsScreen*)p; self->hideScopeRoller(); self->returnToScopeEditor(); }, s);
+    }, LV_EVENT_CLICKED, this);
+
+    _scopeRollerPanel = lv_obj_create(lv_layer_top());
+    lv_obj_set_size(_scopeRollerPanel, theme::MODAL_TEXT_WIDTH, LV_SIZE_CONTENT);
+    lv_obj_align(_scopeRollerPanel, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_bg_color(_scopeRollerPanel, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_bg_opa(_scopeRollerPanel, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(_scopeRollerPanel, theme::ACCENT(), 0);
+    lv_obj_set_style_border_width(_scopeRollerPanel, 1, 0);
+    lv_obj_set_style_radius(_scopeRollerPanel, 8, 0);
+    lv_obj_set_style_pad_all(_scopeRollerPanel, theme::PAD_SMALL, 0);
+    lv_obj_set_style_pad_row(_scopeRollerPanel, theme::PAD_SMALL, 0);
+    lv_obj_set_flex_flow(_scopeRollerPanel, LV_FLEX_FLOW_COLUMN);
+    lv_obj_clear_flag(_scopeRollerPanel, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* titleLbl = lv_label_create(_scopeRollerPanel);
+    lv_label_set_text(titleLbl, title.c_str());
+    lv_obj_set_style_text_font(titleLbl, FONT_HEADING, 0);
+    lv_obj_set_style_text_color(titleLbl, theme::TEXT_PRIMARY(), 0);
+
+    String opts;
+    for (size_t i = 0; i < options.size(); i++) { if (i) opts += "\n"; opts += options[i]; }
+
+    _scopeRoller = lv_roller_create(_scopeRollerPanel);
+    lv_roller_set_options(_scopeRoller, opts.c_str(), LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_selected(_scopeRoller, 0, LV_ANIM_OFF);
+    lv_obj_set_width(_scopeRoller, LV_PCT(100));
+    lv_obj_set_style_text_font(_scopeRoller, FONT_HEADING, 0);
+    lv_obj_set_style_text_color(_scopeRoller, theme::TEXT_PRIMARY(), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(_scopeRoller, theme::BG_SECONDARY(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(_scopeRoller, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(_scopeRoller, 0, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(_scopeRoller, theme::ACCENT(), LV_PART_SELECTED);
+    lv_obj_set_style_bg_opa(_scopeRoller, LV_OPA_COVER, LV_PART_SELECTED);
+    lv_obj_set_style_text_color(_scopeRoller, theme::TEXT_ON_ACCENT(), LV_PART_SELECTED);
+#ifdef PLATFORM_TWATCH
+    lv_roller_set_visible_row_count(_scopeRoller, 3);
+#else
+    lv_roller_set_visible_row_count(_scopeRoller, 4);
+#endif
+
+    lv_obj_t* btnRow = lv_obj_create(_scopeRollerPanel);
+    lv_obj_set_size(btnRow, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(btnRow, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(btnRow, 0, 0);
+    lv_obj_set_style_pad_all(btnRow, 0, 0);
+    lv_obj_set_flex_flow(btnRow, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(btnRow, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(btnRow, theme::PAD_SMALL, 0);
+    lv_obj_clear_flag(btnRow, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* okBtn = lv_btn_create(btnRow);
+    lv_obj_set_style_bg_color(okBtn, theme::ACCENT(), 0);
+    lv_obj_set_style_bg_color(okBtn, theme::BG_SECONDARY(), LV_STATE_FOCUSED);
+    lv_obj_add_event_cb(okBtn, scopeRollerOkCb, LV_EVENT_CLICKED, this);
+    lv_obj_t* okLbl = lv_label_create(okBtn);
+    lv_label_set_text(okLbl, t("btn_ok"));
+    lv_obj_set_style_text_color(okLbl, theme::TEXT_ON_ACCENT(), 0);
+    lv_obj_center(okLbl);
+
+    lv_obj_t* cancelBtn = lv_btn_create(btnRow);
+    lv_obj_set_style_bg_color(cancelBtn, theme::BG_SECONDARY(), 0);
+    lv_obj_set_style_bg_color(cancelBtn, theme::ACCENT(), LV_STATE_FOCUSED);
+    lv_obj_add_event_cb(cancelBtn, [](lv_event_t* ev) {
+        auto* s = (SettingsScreen*)lv_event_get_user_data(ev);
+        lv_async_call([](void* p) { auto* self = (SettingsScreen*)p; self->hideScopeRoller(); self->returnToScopeEditor(); }, s);
+    }, LV_EVENT_CLICKED, this);
+    lv_obj_t* cxlLbl = lv_label_create(cancelBtn);
+    lv_label_set_text(cxlLbl, t("btn_cancel"));
+    lv_obj_center(cxlLbl);
+
+    lv_group_t* g = lv_group_create();
+    _scopeRollerGroup = g;
+    lv_group_add_obj(g, _scopeRoller);
+    lv_group_add_obj(g, okBtn);
+    lv_group_add_obj(g, cancelBtn);
+    lv_group_focus_obj(_scopeRoller);
+    UIManager::instance().switchToModalGroup(_scopeRollerPanel);
+    IInput::instance().attachToGroup(g);
+}
+
+void SettingsScreen::scopeRollerOkCb(lv_event_t* e) {
+    auto* self = (SettingsScreen*)lv_event_get_user_data(e);
+    if (!self || !self->_scopeRoller) return;
+    uint16_t idx = lv_roller_get_selected(self->_scopeRoller);
+    ScopePick phase = self->_scopePickPhase;
+
+    if (phase == ScopePick::Repeater) {
+        if (idx < self->_scopeRepeaters.size()) {
+            ScopeRepeater r = self->_scopeRepeaters[idx];   // copy before teardown
+            self->hideScopeRoller();
+            self->beginScopeRequest(r.pubKey, r.name);
+        } else {
+            self->hideScopeRoller();
+            self->returnToScopeEditor();
+        }
+    } else {  // Scope phase — chosen region fills the still-open editor textarea for review.
+        if (idx < self->_scopeNames.size() && self->_scopeTextarea) {
+            lv_textarea_set_text(self->_scopeTextarea, self->_scopeNames[idx].c_str());
+        }
+        self->hideScopeRoller();
+        self->returnToScopeEditor();
+    }
+}
+
+void SettingsScreen::hideScopeRoller() {
+    if (!_scopeRollerPanel) return;
+    UIManager::instance().restoreFromModalGroup();
+    if (_scopeRollerGroup) { lv_group_del(_scopeRollerGroup); _scopeRollerGroup = nullptr; }
+    _scopeRoller = nullptr;
+    lv_obj_del_async(_scopeRollerPanel);   _scopeRollerPanel   = nullptr;
+    lv_obj_del_async(_scopeRollerOverlay); _scopeRollerOverlay = nullptr;
 }
 
 // ─────────────────────────── Boot text editor ───────────────────────────

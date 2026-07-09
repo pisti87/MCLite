@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <vector>
 #include <Arduino.h>
 #include "../storage/TelemetryCache.h"
 #include "../config/defaults.h"
@@ -29,6 +30,7 @@ using OnTelemetryCallback  = std::function<void(const uint8_t* pubKey, const Tel
 using OnTelemetryRawCallback = std::function<void(const uint8_t* pubKey, const uint8_t* lpp, uint8_t lppLen)>;
 using OnTelemetryRetryCallback = std::function<void(uint32_t newTimeoutMs)>;
 using OnAnonResponseCallback = std::function<void(uint32_t tag, const uint8_t* data, uint8_t len)>;
+using OnScopeListCallback = std::function<void(const std::vector<String>& scopes)>;
 using OnStatusResponseCallback = std::function<void(const uint8_t* pubKey, const uint8_t* data, uint8_t len)>;
 using OnTraceCallback = std::function<void(uint32_t tag, uint32_t auth, uint8_t flags,
                                            const uint8_t* path_snrs, const uint8_t* path_hashes,
@@ -68,6 +70,7 @@ public:
     void onTelemetryRaw(OnTelemetryRawCallback cb) { _onTelemetryRaw = cb; }
     void onTelemetryRetry(OnTelemetryRetryCallback cb) { _onTelemetryRetry = cb; }
     void onAnonResponse(OnAnonResponseCallback cb) { _onAnonResponse = cb; }
+    void onScopeList(OnScopeListCallback cb) { _onScopeList = cb; }
     void onStatusResponse(OnStatusResponseCallback cb) { _onStatusResponse = cb; }
     void onTrace(OnTraceCallback cb) { _onTrace = cb; }
     void onRoomMessage(OnRoomMessageCallback cb) { _onRoomMsg = cb; }
@@ -97,6 +100,12 @@ public:
                           uint32_t& tag, uint32_t& estTimeout);
     // True while an anonymous request is awaiting a reply (single-slot).
     bool isAnonReqPending() const;
+    // Free the anon-request slot when the caller abandons a request (see clearPendingAnonReq).
+    void clearAnonReq();
+
+    // Request a repeater's scope/region list by pubkey (issue #45). Zero-hop direct — reaches
+    // direct-range repeaters only. Reply arrives via onScopeList. Shares the single anon slot.
+    bool requestScopeList(const uint8_t* pubKey, uint32_t& tag, uint32_t& estTimeout);
 
     // Send a status request to a known contact by pubkey; reply via onStatusResponse.
     bool sendStatusReqByKey(const uint8_t* pubKey, uint32_t& tag, uint32_t& estTimeout);
@@ -167,6 +176,7 @@ private:
     OnTelemetryRawCallback _onTelemetryRaw;
     OnTelemetryRetryCallback _onTelemetryRetry;
     OnAnonResponseCallback _onAnonResponse;
+    OnScopeListCallback _onScopeList;
     OnStatusResponseCallback _onStatusResponse;
     OnTraceCallback _onTrace;
     OnRoomMessageCallback _onRoomMsg;

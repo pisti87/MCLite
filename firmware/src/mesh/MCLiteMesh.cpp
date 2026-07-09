@@ -318,6 +318,7 @@ void MCLiteMesh::loop() {
         LOGLN("[MCLiteMesh] Anon req timed out — clearing pending slot");
         _pendingAnonTag = 0;
         memset(_pendingAnonKey, 0, PUB_KEY_SIZE);
+        _pendingAnonIsRegions = false;
     }
 
     // Free the single status-request slot if its reply never arrived.
@@ -1039,12 +1040,26 @@ bool MCLiteMesh::sendAnonReqByKey(const uint8_t* pubKey, const uint8_t* data, ui
         return false;
     }
     _pendingAnonTag = tag;
+    _pendingAnonIsRegions = false;   // plain anon req; requestScopeList() overrides after this returns
     memcpy(_pendingAnonKey, ci->id.pub_key, PUB_KEY_SIZE);
     // Free the single slot if no reply arrives (estimate + slack), so a dropped
     // reply doesn't wedge the feature until reboot. A late reply past this just
     // finds no pending request and is ignored (the app has its own timeout).
     _pendingAnonExpiry = millis() + estTimeout + 5000;
     LOGF("[MCLiteMesh] Anon req sent (tag=%u, timeout=%ums)\n", tag, estTimeout);
+    return true;
+}
+
+bool MCLiteMesh::requestScopeList(const uint8_t* pubKey, uint32_t& tag, uint32_t& estTimeout) {
+    // Zero-hop direct only: [ANON_REQ_TYPE_REGIONS][reply-path-len 0]. sendAnonReqByKey seeds a
+    // transient contact with out_path_len 0, so the request is route-direct to an IN-RANGE
+    // repeater and the repeater's zero-hop reply reaches us. Multi-hop is unsupported (see
+    // docs/known-issues): an overheard advert flood-path is not a reliable reverse direct
+    // route, and anonymous path discovery to an arbitrary repeater needs its guest credentials.
+    const uint8_t req[2] = { ANON_REQ_TYPE_REGIONS, 0x00 };
+    if (!sendAnonReqByKey(pubKey, req, sizeof(req), tag, estTimeout)) return false;
+    _pendingAnonIsRegions = true;   // set AFTER a successful send (which cleared it)
+    LOGF("[MCLiteMesh] Scope-list request sent (tag=%u)\n", tag);
     return true;
 }
 
@@ -1280,7 +1295,15 @@ void MCLiteMesh::onContactResponse(const ContactInfo& contact,
             memcmp(contact.id.pub_key, _pendingAnonKey, PUB_KEY_SIZE) == 0) {
             _pendingAnonTag = 0;
             memset(_pendingAnonKey, 0, PUB_KEY_SIZE);
-            if (_onAnonResponse) _onAnonResponse(anonTag, data + 4, len - 4);
+            const bool wasRegions = _pendingAnonIsRegions;
+            _pendingAnonIsRegions = false;
+            if (wasRegions) {
+                // Scope-list query (#45): data+4 skips the reflected tag, leaving
+                // [repeater_clock:4][names]; parseScopeList skips the clock.
+                if (_onScopeList) _onScopeList(parseScopeList(data + 4, len - 4));
+            } else if (_onAnonResponse) {
+                _onAnonResponse(anonTag, data + 4, len - 4);
+            }
             return;
         }
     }
