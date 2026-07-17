@@ -12,7 +12,7 @@
     "sos_alert_title": "SOS RIASZTÁS", 
     "sos_from": "Feladó: %s", 
     "sos_ack": "SOS visszaigazolva", 
-    "sos_sos_countdown" %d, utána küld...", 
+    "sos_countdown": "SOS küldése %d másodperc múlva..."
     "sos_sent": "SOS elküldve %d címzettnek", 
     "sos_sent_title": "SOS elküldve", 
     "btn_ok": "OK", 
