@@ -1,5 +1,5 @@
 {
-    "version": 43, 
+    "version": 43,
     "no_sd_title": "Nincs SD-kártya", 
     "no_sd_msg": "Helyezzen be egy config.json fájlt tartalmazó Mezőt tartalmazó SD-kártyát,\nmajd létrehozása\n CL-indító\n CLASSA újrahasználatát. Toolprogram.", 
     "setup_title": "Configuráció szükséges", 
